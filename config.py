@@ -1,7 +1,8 @@
+from os import path 
 
 #Dataset
-DATASET_URL=""
-DATASET_FOLDER_IMG=""
-DATASET_MAIN_FOLDER_NAME=""
+DATASET_URL="https://www.kaggle.com/atulanandjha/lfwpeople/download"
+DATASET_MAIN_FOLDER_NAME="dataset"
+DATASET_FOLDER_IMG=path.join(DATASET_MAIN_FOLDER_NAME,"lfw_funneled")
 DATASET_IMAGE_EXTENSION=".jpg"
-DATASET_ZIP_NAME=""
+DATASET_ZIP_NAME="archive.zip"
