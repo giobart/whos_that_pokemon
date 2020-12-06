@@ -48,7 +48,7 @@ class CNN(nn.Module):
 
 
 class Siamese(pl.LightningModule):
-    def __init__(self, hparams=None, input_channels=3, input_shape=(3, 256, 256), CNN_model=CNN):
+    def __init__(self, data_module: pl.LightningDataModule, hparams=None, input_channels=3, input_shape=(3, 256, 256), CNN_model=CNN):
         super().__init__()
         self.hparams = hparams
 
@@ -61,7 +61,7 @@ class Siamese(pl.LightningModule):
 
         self.conv = CNN_model(activ_fn, f_size, f_channels, padding=padding, input_channels=input_channels, input_shape=input_shape), # size/16 x 8*channels
         self.out = nn.Linear(4096, 1)
-
+        self.data_module = data_module
 
     def forward(self, x1, x2):
         out1 = self.CNN_model(x1)
@@ -90,13 +90,13 @@ class Siamese(pl.LightningModule):
 
     @pl.data_loader
     def train_dataloader(self):
-        ## todo: complete dataloader
-        pass
-        # return DataLoader(self.train_dataset, shuffle=True, batch_size=self.hparams["batch_size"])
+        return self.data_module.train_dataloader()
 
     @pl.data_loader
     def val_dataloader(self):
-        ## todo: complete dataloader
-        pass
-        # return DataLoader(self.val_dataset, batch_size=self.hparams["batch_size"])
+        return self.data_module.val_dataloader()
+
+    @pl.data_loader
+    def test_dataloader(self):
+        return self.data_module.test_dataloader()
 
