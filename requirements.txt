@@ -1,0 +1,7 @@
+torch>=1.7.0
+torchvision>=0.8.1
+pytorch-lightning>=1.0.8
+requests>=2.25.0
+matplotlib>=3.3.3
+Pillow>=8.0.1
+scikit-image>=0.17.2

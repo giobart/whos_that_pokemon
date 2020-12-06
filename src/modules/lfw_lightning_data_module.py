@@ -6,15 +6,16 @@ from random import seed
 from PIL import Image
 from random import randint
 import numpy as np
+from torch.utils.data import random_split
 
 
 class LFW_DataModule(pl.LightningDataModule):
-    def __init__(self, dataset, batch_size=32, splitting_points=(0.6, 0.8), num_workers=4):
+    def __init__(self, dataset, batch_size=32, splitting_points=(0.11, 0.11), num_workers=4):
         """
         Args:
             dataset: LfwImagesDataset()
             batch_size: default value: 32
-            splitting_points:   splitting point % for test and validation.
+            splitting_points:   splitting point % for train, test and validation.
                                 default (0.6,0.85) -> 60% train, 25% validation, 15% test
         """
         super().__init__()
@@ -29,28 +30,22 @@ class LFW_DataModule(pl.LightningDataModule):
 
     def setup(self):
         # transforms
-        transform = transforms.Compose([
+        transform  = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
         ])
+
         self.dataset.set_transform(transform)
 
         # define split point
         valid, test = self.splitting_points
         n_samples = len(self.dataset)
-        indices = np.random.permutation(n_samples)
-        split_point_validation = int(n_samples * valid / 100)
-        split_point_test = int(n_samples * test / 100)
-
-        # split indices
-        train_indices = indices[:split_point_validation]
-        val_indices = indices[split_point_validation:split_point_test]
-        test_indices = indices[split_point_test:]
+        val_size = int(n_samples * valid)
+        test_size = int(n_samples * test)
+        split_size = [n_samples - (val_size + test_size), val_size, test_size]
+        print(split_size)
 
         # split
-        self.train_dataset = torch.utils.data.Subset(self.dataset, indices=train_indices)
-        self.val_dataset = torch.utils.data.Subset(self.dataset, indices=val_indices)
-        self.test_dataset = torch.utils.data.Subset(self.dataset, indices=test_indices)
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, split_size)
 
     # return the dataloader for each split
     def train_dataloader(self):
