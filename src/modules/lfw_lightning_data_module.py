@@ -7,6 +7,7 @@ from PIL import Image
 from random import randint
 import numpy as np
 from torch.utils.data import random_split
+from src.tools.image_preprocess import FaceAlignTransform
 
 
 class LFW_DataModule(pl.LightningDataModule):
@@ -30,7 +31,8 @@ class LFW_DataModule(pl.LightningDataModule):
 
     def setup(self):
         # transforms
-        transform  = transforms.Compose([
+        transform = transforms.Compose([
+            FaceAlignTransform(FaceAlignTransform.AFFINE),
             transforms.ToTensor(),
         ])
 
@@ -104,7 +106,7 @@ class LfwImagesDataset(Dataset):
     def __getitem__(self, idx):
         key, path = self.idx_encoding[idx]
         image1 = Image.open(path)
-        image2 = Image.open(path)
+        image2 = image1
 
         # if index is even pick an adjacent picture
         if idx % 2 == 0:
