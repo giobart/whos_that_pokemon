@@ -28,10 +28,11 @@ class LFW_DataModule(pl.LightningDataModule):
         self.val_dataset = None
         self.test_dataset = None
 
-    def setup(self):
+    def setup(self, stage=None):
         # transforms
-        transform  = transforms.Compose([
+        transform = transforms.Compose([
             transforms.ToTensor(),
+            transforms.Resize((128, 128))
         ])
 
         self.dataset.set_transform(transform)
@@ -108,6 +109,7 @@ class LfwImagesDataset(Dataset):
 
         # if index is even pick an adjacent picture
         if idx % 2 == 0:
+            label = 1.0
             if idx < len(self.idx_encoding) - 1:
                 key2, path2 = self.idx_encoding[idx + 1]
             else:
@@ -115,6 +117,7 @@ class LfwImagesDataset(Dataset):
             image2 = Image.open(path2)
         # if index is odd pick a random picture form the dataset of a different person
         else:
+            label = 0.0
             key2 = key
             while key2 == key:
                 new_idx = randint(0, len(self.idx_encoding) - 1)
@@ -125,7 +128,7 @@ class LfwImagesDataset(Dataset):
             image1 = self.transform(image1)
             image2 = self.transform(image2)
 
-        return image1, image2, key == key2
+        return image1, image2, torch.from_numpy(np.array([label], dtype=np.float32))
 
     def __len__(self):
         return len(self.idx_encoding)
