@@ -6,7 +6,7 @@ from config import *
 import glob
 import gdown
 
-TARGET_FOLDER = path.join(".",DATASET_FOLDER_IMG) 
+TARGET_FOLDER = path.join(".", DATASET_FOLDER_IMG)
 FOLDER_LIST = []
 
 def dataset_download_targz(url=DATASET_URL):
@@ -42,6 +42,11 @@ def get_dataset_filename_map(min_val=2, max_val=-1):
         Arguments: 
         min_val= minim amount of element that the Value list must contain. Default: 2
     """
+    FOLDER_LIST = glob.glob(path.join(DATASET_FOLDER_IMG, "*"))
+    if len(FOLDER_LIST) == 0:
+        raise Exception(
+            "place the dataset folder into the main project folder and update the config file correspondingly or download it first with donwload_dataset()")
+
     result = {}
     total_size = 0
     for folder_path in FOLDER_LIST:
@@ -58,4 +63,3 @@ def get_dataset_filename_map(min_val=2, max_val=-1):
 
             total_size += len(result[person_name])
     return result
-
