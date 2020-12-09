@@ -8,3 +8,4 @@ scikit-image>=0.17.2
 gdown>=3.12.2
 dlib
 opencv-python
+scipy

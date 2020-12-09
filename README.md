@@ -15,7 +15,7 @@ The current dataset used is the LFW and can be download from [LFW-People](https:
 ## Dataset data module
 The Data Module takes in input a dataset and generates training,validation and test set. 
 Currently the Data Module uses an image transformation that aligns the faces using an affine transformation. 
-This can be changed inside `lfw_lightning_data_module` changing the default `FaceAlignTransform(FaceAlignTransform.AFFINE)` to `FaceAlignTransform(FaceAlignTransform.ROTATION)` in order to have a simpler rotation transform. 
+This can be changed inside `lfw_lightning_data_module` changing the default `FaceAlignTransform(FaceAlignTransform.ROTATION)` to `FaceAlignTransform(FaceAlignTransform.AFFINE)` in order to have the experimental affine transformation. 
 
 
 
