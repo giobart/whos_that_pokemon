@@ -5,6 +5,7 @@ import tarfile
 from config import *
 import glob
 import gdown
+import random
 
 TARGET_FOLDER = path.join(".", DATASET_FOLDER_IMG)
 FOLDER_LIST = []
@@ -35,6 +36,41 @@ def dataset_gdrive_download(url=DRIVE_URL):
     os.remove(target_filepath)
 
 
+def get_pairs():
+    """
+    :return: {"train": [], "validation": [], "test": []} containing a each a list [[v1,v2,v3,v4]...] of pair.txt
+    """
+
+    folder_list = glob.glob(path.join(DATASET_FOLDER_IMG, "*.txt"))
+    if len(folder_list) == 0:
+        print("downloading pair ")
+        target_filepath = path.join(".", PAIR_TXT_TRAIN_PATH)
+        gdown.download(PAIR_TXT_TRAIN_URL, target_filepath, quiet=False)
+        target_filepath = path.join(".", PAIR_TXT_VALID_PATH)
+        gdown.download(PAIR_TXT_VALID_URL, target_filepath, quiet=False)
+
+    train_file = open(PAIR_TXT_TRAIN_PATH)
+    valid_file = open(PAIR_TXT_VALID_PATH)
+
+    pairmap = {"train": [], "valid": [], "test": []}
+
+    lines_train = train_file.readlines()[1:]
+    train_file.close()
+    for line in lines_train:
+        pairmap["train"].append(line.split("\t"))
+
+    lines_valid = valid_file.readlines()[1:]
+    train_file.close()
+    for line in lines_valid:
+        pairmap["valid"].append(line.split("\t"))
+        random.shuffle(pairmap["valid"])
+
+    pairmap["test"]=pairmap["valid"][0:int(len(pairmap["valid"])/2)]
+    pairmap["valid"] = pairmap["valid"][int(len(pairmap["valid"]) / 2):]
+
+    return pairmap
+
+
 def get_dataset_filename_map(min_val=2):
     """
         Function used to return a map key-value
@@ -57,6 +93,3 @@ def get_dataset_filename_map(min_val=2):
             result[person_name] = image_list
 
     return result
-
-
-
