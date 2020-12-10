@@ -10,7 +10,7 @@ from torch.utils.data import random_split
 
 
 class LFW_DataModule(pl.LightningDataModule):
-    def __init__(self, dataset, batch_size=32, splitting_points=(0.11, 0.11), num_workers=4):
+    def __init__(self, dataset, batch_size=32, splitting_points=(0.11, 0.11), num_workers=4, shuffle=False):
         """
         Args:
             dataset: LfwImagesDataset()
@@ -27,6 +27,7 @@ class LFW_DataModule(pl.LightningDataModule):
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
+        self.shuffle = shuffle
 
     def setup(self, stage=None):
         # transforms
@@ -52,7 +53,7 @@ class LFW_DataModule(pl.LightningDataModule):
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.train_dataset,
                                            batch_size=self.batch_size,
-                                           num_workers=4,
+                                           num_workers=self.num_workers,
                                            shuffle=True,
                                            sampler=None,
                                            collate_fn=None
@@ -61,8 +62,8 @@ class LFW_DataModule(pl.LightningDataModule):
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.val_dataset,
                                            batch_size=self.batch_size,
-                                           num_workers=4,
-                                           shuffle=True,
+                                           num_workers=self.num_workers,
+                                           shuffle=self.shuffle,
                                            sampler=None,
                                            collate_fn=None
                                            )
@@ -70,8 +71,8 @@ class LFW_DataModule(pl.LightningDataModule):
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_dataset,
                                            batch_size=self.batch_size,
-                                           num_workers=4,
-                                           shuffle=True,
+                                           num_workers=self.num_workers,
+                                           shuffle=False,
                                            sampler=None,
                                            collate_fn=None
                                            )
@@ -109,7 +110,7 @@ class LfwImagesDataset(Dataset):
 
         # if index is even pick an adjacent picture
         if idx % 2 == 0:
-            label = 1.0
+            label = 0.0
             if idx < len(self.idx_encoding) - 1:
                 key2, path2 = self.idx_encoding[idx + 1]
             else:
@@ -117,7 +118,7 @@ class LfwImagesDataset(Dataset):
             image2 = Image.open(path2)
         # if index is odd pick a random picture form the dataset of a different person
         else:
-            label = 0.0
+            label = 1.0
             key2 = key
             while key2 == key:
                 new_idx = randint(0, len(self.idx_encoding) - 1)
