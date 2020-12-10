@@ -15,12 +15,11 @@ def dataset_download_targz(url=DATASET_URL):
     if len(folder_list) != 0:
         print("Dataset already downloaded")
         return
-    r = requests.get(DATASET_URL, allow_redirects=True)
     target_filepath = path.join(".", DATASET_ZIP_NAME)
-    print(target_filepath)
-    open(target_filepath, 'wb').write(r.content)
+    gdown.download(DATASET_URL, target_filepath, quiet=False)
     with tarfile.open(target_filepath) as tar:
         tar.extractall(path=DATASET_MAIN_FOLDER_NAME)
+    os.remove(target_filepath)
 
 
 def dataset_gdrive_download(url=DRIVE_URL):
@@ -33,6 +32,7 @@ def dataset_gdrive_download(url=DRIVE_URL):
     zip_file = zipfile.ZipFile(target_filepath, "r")
     zip_file.extractall(path=DATASET_MAIN_FOLDER_NAME)
     zip_file.close()
+    os.remove(target_filepath)
 
 
 def get_dataset_filename_map(min_val=2):
