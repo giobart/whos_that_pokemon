@@ -41,16 +41,33 @@ def get_pairs():
     :return: {"train": [], "validation": [], "test": []} containing a each a list [[v1,v2,v3,v4]...] of pair.txt
     """
 
+    # download and split pairs into train, validation and test
     folder_list = glob.glob(path.join(DATASET_FOLDER_IMG, "*.txt"))
     if len(folder_list) == 0:
-        print("downloading pair ")
+        print("downloading training pairs")
         target_filepath = path.join(".", PAIR_TXT_TRAIN_PATH)
         gdown.download(PAIR_TXT_TRAIN_URL, target_filepath, quiet=False)
+        print("downloading test pairs ")
         target_filepath = path.join(".", PAIR_TXT_VALID_PATH)
         gdown.download(PAIR_TXT_VALID_URL, target_filepath, quiet=False)
+        print("splitting test pairs into validation and test pairs")
+        valid_file = open(PAIR_TXT_VALID_PATH)
+        lines = valid_file.readlines()[1:]
+        valid_file.close()
+        random.shuffle(lines)
+        valid_file = open(PAIR_TXT_VALID_PATH,"w")
+        for item in lines[0:int(len(lines)/2)]:
+            valid_file.write("%s" % item)
+        valid_file.close()
+        test_file = open(PAIR_TXT_TEST_PATH, "w+")
+        for item in lines[int(len(lines) / 2):]:
+            test_file.write("%s" % item)
+        test_file.close()
+
 
     train_file = open(PAIR_TXT_TRAIN_PATH)
     valid_file = open(PAIR_TXT_VALID_PATH)
+    test_file = open(PAIR_TXT_TEST_PATH)
 
     pairmap = {"train": [], "valid": [], "test": []}
 
@@ -59,14 +76,17 @@ def get_pairs():
     for line in lines_train:
         pairmap["train"].append(line.split("\t"))
 
-    lines_valid = valid_file.readlines()[1:]
+    lines_valid = valid_file.readlines()
     train_file.close()
     for line in lines_valid:
         pairmap["valid"].append(line.split("\t"))
         random.shuffle(pairmap["valid"])
 
-    pairmap["test"]=pairmap["valid"][0:int(len(pairmap["valid"])/2)]
-    pairmap["valid"] = pairmap["valid"][int(len(pairmap["valid"]) / 2):]
+    lines_test = test_file.readlines()
+    test_file.close()
+    for line in lines_test:
+        pairmap["test"].append(line.split("\t"))
+        random.shuffle(pairmap["test"])
 
     return pairmap
 

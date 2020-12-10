@@ -11,6 +11,7 @@ PAIR_TXT_TRAIN_URL = "http://vis-www.cs.umass.edu/lfw/pairsDevTrain.txt"
 PAIR_TXT_TRAIN_PATH = path.join(DATASET_FOLDER_IMG, "train_pair.txt")
 PAIR_TXT_VALID_URL = "http://vis-www.cs.umass.edu/lfw/pairsDevTest.txt"
 PAIR_TXT_VALID_PATH = path.join(DATASET_FOLDER_IMG, "valid_pair.txt")
+PAIR_TXT_TEST_PATH = path.join(DATASET_FOLDER_IMG, "test_pair.txt")
 
 # trained model data, please update .gitignore accordingly
 MODEL_DATA_PATH = "model_data/"
