@@ -39,7 +39,7 @@ class LFW_DataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         # transforms
         transform = transforms.Compose([
-            # FaceAlignTransform(FaceAlignTransform.ROTATION),
+            FaceAlignTransform(FaceAlignTransform.ROTATION),
             transforms.ToTensor(),
             transforms.Resize((128, 128))
         ])
