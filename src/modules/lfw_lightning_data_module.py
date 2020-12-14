@@ -13,7 +13,7 @@ from src.tools.image_preprocess import FaceAlignTransform
 class LFW_DataModule(pl.LightningDataModule):
 
     def __init__(self, dataset, batch_size=32, splitting_points=(0.11, 0.11), num_workers=4, shuffle=False, manual_split=False,
-                 valid_dataset=None, test_dataset=None):
+                 valid_dataset=None, test_dataset=None, input_size=128):
         """
         Args:
             dataset: LfwImagesDataset(), if manual_split==True than this is the LfwImagesPairsDataset train set
@@ -34,14 +34,14 @@ class LFW_DataModule(pl.LightningDataModule):
         self.val_dataset = valid_dataset
         self.test_dataset = test_dataset
         self.manual_split = manual_split
-
+        self.input_size = input_size
 
     def setup(self, stage=None):
         # transforms
         transform = transforms.Compose([
-            FaceAlignTransform(FaceAlignTransform.ROTATION),
+            # FaceAlignTransform(FaceAlignTransform.ROTATION),
             transforms.ToTensor(),
-            transforms.Resize((128, 128))
+            transforms.Resize((self.input_size, self.input_size))
         ])
 
         self.dataset.set_transform(transform)
