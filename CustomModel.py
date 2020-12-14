@@ -112,10 +112,9 @@ class Siamese(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams["weight_decay"])
         return optimizer
 
-    def calc_acc(self, y, output):
-        if isinstance(self.loss_fn, ContrastiveLoss):
-            beta = 1.0
-            pred = (output > 0.199 * ( self.hparams['loss_margin'] ) )
+    def calc_acc(self, y, output, beta=1.0, boundary=0.995):
+        if isinstance(self.loss_fn, ContrastiveLoss):            
+            pred = (output > boundary )
             # return torch.tensor(torch.sum(y == pred).item() / (len(y) * 1.0))
             tp = ( 1 + beta * beta ) * torch.sum( y * pred == 1 ).item()
             fn = ( beta * beta ) * torch.sum( y > pred ).item()
@@ -132,9 +131,9 @@ class Siamese(pl.LightningModule):
         loss = self.loss_fn(output, y)
         n_correct = torch.tensor(0.0)
         if isinstance(self.loss_fn, ContrastiveLoss):
-            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu())
+            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu() )
         if isinstance(self.loss_fn, nn.BCEWithLogitsLoss):
-            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu())
+            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu() )
 
         return loss, n_correct
 
