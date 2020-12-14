@@ -115,7 +115,7 @@ class Siamese(pl.LightningModule):
     def calc_acc(self, y, output):
         if isinstance(self.loss_fn, ContrastiveLoss):
             beta = 1.0
-            pred = (output > 0.20 * ( self.hparams['loss_margin'] ) )
+            pred = (output > 0.199 * ( self.hparams['loss_margin'] ) )
             # return torch.tensor(torch.sum(y == pred).item() / (len(y) * 1.0))
             tp = ( 1 + beta * beta ) * torch.sum( y * pred == 1 ).item()
             fn = ( beta * beta ) * torch.sum( y > pred ).item()
