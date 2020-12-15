@@ -11,3 +11,4 @@ scipy
 facenet-pytorch
 enum34
 torchsummary
+pandas
