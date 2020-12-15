@@ -112,18 +112,28 @@ class Siamese(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams["lr"], weight_decay=self.hparams["weight_decay"])
         return optimizer
 
-    def calc_acc(self, y, logits):
-        y_hat = nn.Sigmoid()(logits)
-        label = (y_hat > 0.5)
-        return torch.tensor(torch.sum(y == label).item() / (len(y) * 1.0))
+    def calc_acc(self, y, output, beta=1.0, boundary=0.995):
+        if isinstance(self.loss_fn, ContrastiveLoss):
+            pred = (output > boundary )
+            # return torch.tensor(torch.sum(y == pred).item() / (len(y) * 1.0))
+            tp = ( 1 + beta * beta ) * torch.sum( y * pred == 1 ).item()
+            fn = ( beta * beta ) * torch.sum( y > pred ).item()
+            fp = torch.sum( y < pred ).item()
+            return torch.tensor( tp / ( tp + fn + fp ) )
+        else:
+            y_hat = nn.Sigmoid()(output)
+            pred = (y_hat > 0.5)
+            return torch.tensor(torch.sum(y == pred).item() / (len(y) * 1.0))
 
     def general_step(self, batch):
         x1, x2, y = batch
         output = self(x1, x2)
         loss = self.loss_fn(output, y)
         n_correct = torch.tensor(0.0)
+        if isinstance(self.loss_fn, ContrastiveLoss):
+            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu() )
         if isinstance(self.loss_fn, nn.BCEWithLogitsLoss):
-            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu())
+            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu() )
 
         return loss, n_correct
 
