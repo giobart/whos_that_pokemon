@@ -1,11 +1,12 @@
 from os import path
 
 # Dataset
-DATASET_URL = "http://vis-www.cs.umass.edu/lfw/lfw.tgz"
+# DATASET_URL = "http://vis-www.cs.umass.edu/lfw/lfw.tgz"
+DATASET_URL = "http://vis-www.cs.umass.edu/lfw/lfw-deepfunneled.tgz"
 DATASET_MAIN_FOLDER_NAME = path.join(".", "data", "dataset")
-DATASET_FOLDER_IMG = path.join(DATASET_MAIN_FOLDER_NAME, "lfw")
+DATASET_FOLDER_IMG = path.join(DATASET_MAIN_FOLDER_NAME, "lfw-deepfunneled")
 DATASET_IMAGE_EXTENSION = ".jpg"
-DATASET_ZIP_NAME = "lfw.tgz"
+DATASET_ZIP_NAME = "lfw-deepfunneled.tgz"
 DRIVE_URL = ""
 PAIR_TXT_TRAIN_URL = "http://vis-www.cs.umass.edu/lfw/pairsDevTrain.txt"
 PAIR_TXT_TRAIN_PATH = path.join(DATASET_FOLDER_IMG, "train_pair.txt")
