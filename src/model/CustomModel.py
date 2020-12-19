@@ -3,8 +3,8 @@ from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from src.tools.model_tools import ContrastiveLoss
-from src.Model.GeneralLayers import FCN_layer
-from src.Model.CNN_Nets import myCNN, InceptionRNV1
+from src.model.GeneralLayers import FCN_layer
+from src.model.CNN_Nets import myCNN, InceptionRNV1
 from enum import Enum
 from pytorch_lightning.metrics.functional import accuracy
 from torch.optim.lr_scheduler import StepLR
@@ -13,7 +13,6 @@ from torch.optim.lr_scheduler import StepLR
 class CNN_MODEL(Enum):
     MyCNN = 1
     InceptionResnetV1 = 2
-
 
 class Siamese(pl.LightningModule):
     def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL.InceptionResnetV1, freeze_layers=True):
@@ -94,11 +93,10 @@ class Siamese(pl.LightningModule):
     def calc_acc(self, y, logits, beta=1.0, boundary=0.995):
         if isinstance(self.loss_fn, ContrastiveLoss):
             pred = (logits > boundary )
-            # return torch.tensor(torch.sum(y == pred).item() / (len(y) * 1.0))
             tp = ( 1 + beta * beta ) * torch.sum( y * pred == 1 ).item()
-            fn = ( beta * beta ) * torch.sum( y > pred ).item()
+            fn = ( beta * beta ) * torch.sum(y > pred).item()
             fp = torch.sum( y < pred ).item()
-            return torch.tensor( tp / ( tp + fn + fp ) )
+            return torch.tensor( tp / (tp + fn + fp))
         else:
             y_hat = nn.Sigmoid()(logits).squeeze()
             y_hat[y_hat >= 0.5] = 1.0
@@ -109,13 +107,12 @@ class Siamese(pl.LightningModule):
     def general_step(self, batch):
         x1, x2, y = batch
         output = self(x1, x2)
-
         if isinstance(self.loss_fn, ContrastiveLoss):
             loss = self.loss_fn(output, y)
-            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu() )
-        if isinstance(self.loss_fn, nn.BCEWithLogitsLoss):
+        elif isinstance(self.loss_fn, nn.BCEWithLogitsLoss):
             loss = self.loss_fn(output.squeeze(), y)
-            n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu() )
+
+        n_correct = self.calc_acc(y.detach().cpu(), output.detach().cpu())
 
         return loss, n_correct
 
@@ -124,7 +121,7 @@ class Siamese(pl.LightningModule):
         loss, n_correct = self.general_step(train_batch)
         return {
             'loss': loss,
-            'n_correct': n_correct
+            'n_correct': n_correct,
         }
 
     def validation_step(self, val_batch, batch_idx):
@@ -132,7 +129,7 @@ class Siamese(pl.LightningModule):
         loss, n_correct = self.general_step(val_batch)
         return {
             'loss': loss.detach().cpu(),
-            'n_correct': n_correct
+            'n_correct': n_correct,
         }
 
     def test_step(self, batch, batch_idx):
