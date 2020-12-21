@@ -34,7 +34,7 @@ This service exposes a very simple REST API with 3 methods:
 	"img":[int]
 }
 ``` 
-	- note that the image int array represents the extracted features of the image from the model
+note that the image int array represents the extracted features of the image from the model
 - GET http://127.0.0.1:5000/api/get_all/<page_size>/<page_number>
 	- If for example we want to get the first batch of 10 elements from the image list we call `api/get_all/10/1`
 	- For the second batch of 10 elements we type `api/get_all/10/2`
