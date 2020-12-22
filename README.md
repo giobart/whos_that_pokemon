@@ -1,11 +1,8 @@
 # Who's that Pokemon
 
 ## Requirements
-In order to run the project the following dependencies must be resolved:
-- torch
-- torchvision
-- pytorch_lightning
-- numpy
+install the requirements with:
+```pip install -r requirements.txt```
 
 ## Download the dataset
 The current dataset used is the LFW and can be download from [LFW-People](https://www.kaggle.com/atulanandjha/lfwpeople)
