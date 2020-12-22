@@ -44,6 +44,41 @@ def inference(model, images=None, loader=None):
             yield x1.cpu(), x2.cpu(), label, distance.squeeze().cpu()
 
 
+def inference_one(model, images=None, loader=None):
+    """
+    takes dataloader of list of tuples of images and labels and outputs the embedding (logits)
+    :param model: LightningModule to use
+    :param images: List of tuples: [(image1, label1), (image2, label2), ...]
+    :param loader:
+    :return:
+    """
+    if images is None:
+        with torch.no_grad():
+            for batch in loader:
+                x1, label = batch
+                if torch.cuda.is_available():
+                    x1, model = x1.to('cuda'), model.to('cuda')
+
+                model.eval()
+                model.freeze()
+                logits = model.forward_one(x1).squeeze()
+                model.cpu()
+                yield x1.cpu(), label, logits.cpu()
+    else:
+        x1, label = zip(*images)
+
+        with torch.no_grad():
+            x1 = torch.stack([x for x in x1])
+            label = torch.stack([x for x in label])
+            if torch.cuda.is_available():
+                x1, model = x1.to('cuda'), model.to('cuda')
+
+            model.eval()
+            model.freeze()
+            logits = model.forward_one(x1)
+            model.cpu()
+            yield x1.cpu(), label, logits.cpu()
+
 class ContrastiveLoss(torch.nn.Module):
     """
     Contrastive loss function.
