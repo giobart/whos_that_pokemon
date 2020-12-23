@@ -79,6 +79,21 @@ def inference_one(model, images=None, loader=None):
             model.cpu()
             yield x1.cpu(), label, logits.cpu()
 
+
+def get_labeled_and_unlabeled_points(labels, num_points_per_class, num_classes=100):
+    labs, L, U = [], [], []
+    labs_buffer = np.zeros(num_classes)
+    num_points = labels.shape[0]
+    for i in range(num_points):
+        if labs_buffer[labels[i]] == num_points_per_class:
+            U.append(i)
+        else:
+            L.append(i)
+            labs.append(labels[i])
+            labs_buffer[labels[i]] += 1
+    return labs, L, U
+
+
 class ContrastiveLoss(torch.nn.Module):
     """
     Contrastive loss function.
@@ -93,3 +108,4 @@ class ContrastiveLoss(torch.nn.Module):
         loss_contrastive = torch.mean((1 - label) * torch.pow(distance, 2) +
                                       (label) * torch.pow(torch.clamp(self.margin - distance, min=0.0), 2))
         return loss_contrastive
+

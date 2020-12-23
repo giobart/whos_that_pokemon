@@ -109,14 +109,14 @@ class CelebA_DataModule(pl.LightningDataModule):
 class CelebADataset(Dataset):
     """ Face dataset. """
 
-    def __init__(self, data_map, transform=None):
+    def __init__(self, data_map, num_classes, transform=None):
         """
         Args:
             data_map: key,value map of people and faces
         """
         self.image_map = data_map
+        self.labels = list(range(1, num_classes+1))
         self.ys, self.im_paths = self._idx_people_encode()
-
         # self.idx_encoding = self._idx_people_encode()
         self.seed = seed(len(data_map.keys()))
         self.transform = transform
@@ -132,8 +132,9 @@ class CelebADataset(Dataset):
         ys, im_paths = [], []
         for key in self.image_map:
             for img_path in self.image_map[key]:
-                ys += [key]
-                im_paths.append(img_path)
+                if key in self.labels:
+                    ys += [key]
+                    im_paths.append(img_path)
 
         return ys, im_paths
 
