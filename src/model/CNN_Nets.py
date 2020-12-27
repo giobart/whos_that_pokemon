@@ -5,7 +5,7 @@ from facenet_pytorch import InceptionResnetV1
 class myCNN(nn.Module):
     def __init__(self, activ_fn, f_size, f_channels, padding=0):
         super().__init__()
-        input_channels, height, width = (3, 256, 256)
+        input_channels, height, width = (3, 128, 128)
         self.input_size = height
         self.output_size = int(f_channels * 4 * int(height / 8) * int(width / 8))
 
