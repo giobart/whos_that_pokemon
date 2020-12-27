@@ -10,12 +10,13 @@ from pytorch_lightning.metrics.functional import accuracy
 from torch.optim.lr_scheduler import StepLR
 from src.tools import gtg
 import sys
+from src.tools import evaluation_tool
 
 class CNN_MODEL_GROUP(Enum):
     MyCNN = 1
     InceptionResnetV1 = 2
 
-class Siamese(pl.LightningModule):
+class Siamese_Group(pl.LightningModule):
     def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL_GROUP.MyCNN, freeze_layers=True,
                  nb_classes=10177):
 
@@ -24,13 +25,14 @@ class Siamese(pl.LightningModule):
         # self.loss_fn = hparams['loss_fn']
         self.scheduler_params = scheduler_params
         self.freeze_layers = freeze_layers
-        self.loss_fn.margin = hparams['loss_margin']
-        self.gtg = gtg.GTG(nb_classes, max_iter=1, device=self.device)
+        self.gtg = gtg.GTG(nb_classes, max_iter=1, device='cuda')
         self.criterion = nn.NLLLoss()
         self.criterion2 = nn.CrossEntropyLoss()
         self.scaling_loss = 1.0
         self.temperature = hparams['temperature']
         self.num_labeled_points_class = hparams['num_labeled_points_class']
+        self.nb_classes = nb_classes
+        self.CNN_MODEL = cnn_model
 
         # CNN
         if cnn_model == CNN_MODEL_GROUP.MyCNN:
@@ -50,9 +52,8 @@ class Siamese(pl.LightningModule):
         self.linear = nn.Sequential(
             FCN_layer(self.cnn_output_size, hparams['n_hidden1'], dropout=hparams['dropout']),
             FCN_layer(hparams['n_hidden1'], hparams['n_hidden2']),
-
         )
-        self.classifier = nn.Linear(hparams['n_hidden3'], nb_classes)
+        self.classifier = nn.Linear(hparams['n_hidden2'], nb_classes)
 
         self._show_params_to_update()
 
@@ -82,34 +83,26 @@ class Siamese(pl.LightningModule):
                                      weight_decay=self.hparams["weight_decay"])
 
         if self.scheduler_params is not None:
-            lr_scheduler = StepLR(optimizer, **self.scheduler_params)
+            lr_scheduler = {
+                'scheduler': StepLR(optimizer, **self.scheduler_params)
+            }
+
             return [optimizer], [lr_scheduler]
         else:
             return optimizer
 
-    def calc_acc(self, y, logits, beta=1.0, boundary=0.995):
-        if isinstance(self.loss_fn, ContrastiveLoss):
-            pred = (logits > boundary )
-            tp = ( 1 + beta * beta ) * torch.sum( y * pred == 1 ).item()
-            fn = ( beta * beta ) * torch.sum(y > pred).item()
-            fp = torch.sum( y < pred ).item()
-            return torch.tensor( tp / (tp + fn + fp))
-        else:
-            y_hat = nn.Sigmoid()(logits).squeeze()
-            y_hat[y_hat >= 0.5] = 1.0
-            y_hat[y_hat < 0.5] = 0.0
-            return accuracy(y_hat, y)
-            # return torch.tensor(torch.sum(y == y_hat).item() / (len(y) * 1.0))
+    def calc_acc(self, batch, fc):
+        acc = evaluation_tool.evaluate(self, fc7=fc, batch=batch)
+        return torch.tensor(acc)
 
     def general_step(self, batch):
         x, y = batch
         logits, fc = self(x)
-
         labs, L, U = get_labeled_and_unlabeled_points(labels=y,
                                                        num_points_per_class=self.num_labeled_points_class,
                                                        num_classes=self.nb_classes)
 
-        probs_for_gtg = F.softmax(logits / self.temperature)
+        probs_for_gtg = F.softmax(logits / self.temperature, dim=-1)
 
         # do GTG (iterative process)
         probs_for_gtg, W = self.gtg(fc, fc.shape[0], labs, L, U, probs_for_gtg)
@@ -120,8 +113,8 @@ class Siamese(pl.LightningModule):
         loss = self.scaling_loss * loss1 + loss2
         self.test_loss_nan(loss)
 
-        n_correct = self.calc_acc(y.detach().cpu(), logits.detach().cpu())
-        return loss, n_correct
+        acc = self.calc_acc(batch, fc)
+        return loss, acc
 
     def test_loss_nan(self, loss):
         # check possible net divergence
@@ -132,18 +125,18 @@ class Siamese(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         self.train()
-        loss, n_correct = self.general_step(train_batch)
+        loss, acc = self.general_step(train_batch)
         return {
             'loss': loss,
-            'n_correct': n_correct,
+            'acc': acc,
         }
 
     def validation_step(self, val_batch, batch_idx):
         self.eval()
-        loss, n_correct = self.general_step(val_batch)
+        loss, acc = self.general_step(val_batch)
         return {
             'loss': loss.detach().cpu(),
-            'n_correct': n_correct,
+            'acc': acc,
         }
 
     def test_step(self, batch, batch_idx):
@@ -153,9 +146,12 @@ class Siamese(pl.LightningModule):
         # average over all batches aggregated during one epoch
         logger = False if mode == 'test' else True
         avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
-        avg_acc = torch.stack([x['n_correct'] for x in outputs]).mean()
+        avg_acc = torch.stack([x['acc'] for x in outputs]).mean(dim=0)
         self.log(f'{mode}_loss', avg_loss, logger=logger)
-        self.log(f'{mode}_acc', avg_acc, logger=logger)
+        which_nearest_neighbors = [1, 10, 100, 1000]
+        for i, k in enumerate(which_nearest_neighbors):
+            self.log(f'{mode}_R%_@{k} : ', 100 * avg_acc[i], logger=logger)
+
         return avg_loss, avg_acc
 
     def training_epoch_end(self, outputs):
@@ -168,5 +164,5 @@ class Siamese(pl.LightningModule):
         avg_loss, avg_acc = self.general_epoch_end(outputs, 'test')
         return {
             'avg_loss': avg_loss,
-            'avg_acc': avg_acc
+            'avg_acc@1': avg_acc[0]
         }

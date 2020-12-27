@@ -11,6 +11,7 @@ from src.tools.image_preprocess import FaceAlignTransform
 from src.tools.combine_sampler import CombineSampler
 from collections import defaultdict
 
+
 # TODO: Dataloader is nearly the same for also for lfw so lets move it to a common place
 class CelebA_DataModule(pl.LightningDataModule):
 
@@ -38,7 +39,7 @@ class CelebA_DataModule(pl.LightningDataModule):
         self.manual_split = manual_split
         self.input_shape = input_shape
         self.num_classes_iter = num_classes_iter
-        self.num_elements_class = int(batch_size/num_classes_iter)
+        self.num_elements_class = int(batch_size / num_classes_iter)
         torch.manual_seed(0)
 
     def setup(self, stage=None):
@@ -58,7 +59,7 @@ class CelebA_DataModule(pl.LightningDataModule):
             val_size = int(n_samples * valid)
             test_size = int(n_samples * test)
             split_size = [n_samples - (val_size + test_size), val_size, test_size]
-
+            print('split size', split_size)
             # split
             self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, split_size)
         else:
@@ -67,13 +68,19 @@ class CelebA_DataModule(pl.LightningDataModule):
             self.val_dataset.set_transform(transform)
             self.test_dataset.set_transform(transform)
 
+        self.train_list_of_indices_for_each_class = self._get_list_of_indices(self.train_dataset)
+
+
+    def _get_list_of_indices(self, dataset):
         ddict = defaultdict(list)
-        for idx, (_, label) in enumerate(self.train_dataset):
+        for idx, (_, label) in enumerate(dataset):
             ddict[label].append(idx)
 
-        self.list_of_indices_for_each_class = []
+        list_of_indices_for_each_class = []
         for key in ddict:
-            self.list_of_indices_for_each_class.append(ddict[key])
+            list_of_indices_for_each_class.append(ddict[key])
+
+        return list_of_indices_for_each_class
 
     # return the dataloader for each split
     def train_dataloader(self):
@@ -82,7 +89,7 @@ class CelebA_DataModule(pl.LightningDataModule):
                                            num_workers=self.num_workers,
                                            shuffle=False,
                                            sampler=CombineSampler(
-                                               self.list_of_indices_for_each_class,
+                                               self.train_list_of_indices_for_each_class,
                                                self.num_classes_iter,
                                                self.num_elements_class),
                                            collate_fn=None
@@ -90,7 +97,7 @@ class CelebA_DataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.val_dataset,
-                                           batch_size=self.batch_size,
+                                           batch_size=self.batch_size * 2,
                                            num_workers=self.num_workers,
                                            shuffle=False,
                                            sampler=None,
@@ -99,12 +106,13 @@ class CelebA_DataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_dataset,
-                                           batch_size=self.batch_size,
+                                           batch_size=self.batch_size * 2,
                                            num_workers=self.num_workers,
                                            shuffle=False,
                                            sampler=None,
                                            collate_fn=None
                                            )
+
 
 class CelebADataset(Dataset):
     """ Face dataset. """
@@ -115,7 +123,7 @@ class CelebADataset(Dataset):
             data_map: key,value map of people and faces
         """
         self.image_map = data_map
-        self.labels = list(range(1, num_classes+1))
+        self.labels = list(range(num_classes))
         self.ys, self.im_paths = self._idx_people_encode()
         # self.idx_encoding = self._idx_people_encode()
         self.seed = seed(len(data_map.keys()))
@@ -133,7 +141,7 @@ class CelebADataset(Dataset):
         for key in self.image_map:
             for img_path in self.image_map[key]:
                 if key in self.labels:
-                    ys += [key]
+                    ys += [key - 1]
                     im_paths.append(img_path)
 
         return ys, im_paths
@@ -151,7 +159,6 @@ class CelebADataset(Dataset):
         # if self.transform is not None:
         #     image = self.transform(image)
         # return image, torch.from_numpy(np.array([label], dtype=np.float32))
-
         im = Image.open(self.im_paths[idx])
         if self.transform is not None:
             im = self.transform(im)

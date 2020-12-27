@@ -45,4 +45,5 @@ class CombineSampler(Sampler):
         return iter(self.flat_list)
 
     def __len__(self):
-        return len(self.flat_list)
+        n_samples = [len(l) for l in self.l_inds]
+        return int( sum(n_samples) )

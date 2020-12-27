@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-import dynamics
+from src.tools import dynamics
 import torch.nn.functional as F
 
 
@@ -21,18 +21,19 @@ class GTG(nn.Module):
         ps[L, labs] = 1.
 
         # check if probs sum up to 1.
-        assert torch.allclose(ps.sum(dim=1), torch.ones(n).cuda())
+        assert torch.allclose(ps.sum(dim=1), torch.ones(n).to(self.device))
         return ps
 
     def _init_probs_prior(self, probs, labs, L, U):
         """ Initiallized probabilities from the softmax layer of the CNN """
         n = len(L) + len(U)
         ps = torch.zeros(n, self.m).to(self.device)
+        ps = ps.to(self.device)
         ps[U, :] = probs[U, :]
         ps[L, labs] = 1.
         
         # check if probs sum up to 1.
-        assert torch.allclose(ps.sum(dim=1), torch.ones(n).cuda())
+        assert torch.allclose(ps.sum(dim=1), torch.ones(n).to(self.device))
         return ps
 
     def _init_probs_prior_only_classes(self, probs, labs, L, U, classes_to_use):
@@ -49,12 +50,10 @@ class GTG(nn.Module):
         return F.relu(W)
 
     def _get_W(self, x):
-
         x = (x - x.mean(dim=1).unsqueeze(1))
         norms = x.norm(dim=1)
         W = torch.mm(x, x.t()) / torch.ger(norms, norms)
-
-        W = self.set_negative_to_zero(W.cuda())
+        W = self.set_negative_to_zero(W.to(self.device))
         return W
 
     def forward(self, fc7, num_points, labs, L, U, probs=None, classes_to_use=None):
