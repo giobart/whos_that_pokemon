@@ -64,7 +64,10 @@ def evaluate(model, dataloader=None, fc7=None, batch=None):
     recall = []
     # rank the nearest neighbors for each input
     k_pred_labels = evaluation.assign_by_euclidian_at_k(emb, labels, 1000)
-    which_nearest_neighbors = [1, 10, 100, 1000]
+    if batch is None:
+        which_nearest_neighbors = [1, 10, 100, 1000]
+    else:
+        which_nearest_neighbors = [1]
 
     for k in which_nearest_neighbors:
         r_at_k = evaluation.calc_recall_at_k(labels, k_pred_labels, k)

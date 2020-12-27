@@ -109,13 +109,13 @@ class Siamese_Group(pl.LightningModule):
         probs_for_gtg, W = self.gtg(fc, fc.shape[0], labs, L, U, probs_for_gtg)
         probs_for_gtg = torch.log(probs_for_gtg + 1e-12)
 
-        loss1 = self.criterion(probs_for_gtg, y)
-        loss2 = self.criterion2(logits, y)
-        loss = self.scaling_loss * loss1 + loss2
+        nll = self.criterion(probs_for_gtg, y)
+        ce = self.criterion2(logits, y)
+        loss = self.scaling_loss * nll + ce
         self.test_loss_nan(loss)
 
         recall = self.calc_recall(batch, fc)
-        return loss, recall
+        return loss, nll, ce, recall
 
     def test_loss_nan(self, loss):
         # check possible net divergence
@@ -126,18 +126,22 @@ class Siamese_Group(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         self.train()
-        loss, recall = self.general_step(train_batch)
+        loss, nll, ce, recall = self.general_step(train_batch)
         return {
             'loss': loss,
             'recall': recall,
+            'nll': nll,
+            'ce': ce,
         }
 
     def validation_step(self, val_batch, batch_idx):
         self.eval()
-        loss, recall = self.general_step(val_batch)
+        loss, nll, ce, recall = self.general_step(val_batch)
         return {
-            'loss': loss.detach().cpu(),
+            'loss': loss,
             'recall': recall,
+            'nll': nll,
+            'ce': ce,
         }
 
     def test_step(self, batch, batch_idx):
@@ -147,13 +151,20 @@ class Siamese_Group(pl.LightningModule):
         # average over all batches aggregated during one epoch
         logger = False if mode == 'test' else True
         avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
+        avg_nll = torch.stack([x['nll'] for x in outputs]).mean()
+        avg_ce = torch.stack([x['ce'] for x in outputs]).mean()
+
         avg_recall = torch.stack([x['recall'] for x in outputs]).mean(dim=0)
+
         self.log(f'{mode}_loss', avg_loss, logger=logger)
-        which_nearest_neighbors = [1, 10, 100, 1000]
+        self.log(f'{mode}_nll_loss', avg_nll, logger=logger)
+        self.log(f'{mode}_ce_loss', avg_ce, logger=logger)
+
+        which_nearest_neighbors = [1]
         for i, k in enumerate(which_nearest_neighbors):
             self.log(f'{mode}_R%_@{k} : ', 100 * avg_recall[i], logger=logger)
 
-        return avg_loss, avg_recall
+        return avg_loss, avg_recall, avg_nll, avg_ce
 
     def training_epoch_end(self, outputs):
         self.general_epoch_end(outputs, 'train')
@@ -162,8 +173,10 @@ class Siamese_Group(pl.LightningModule):
         self.general_epoch_end(outputs, 'val')
 
     def test_epoch_end(self, outputs):
-        avg_loss, avg_recall = self.general_epoch_end(outputs, 'test')
+        avg_loss, avg_recall, avg_nll, avg_ce = self.general_epoch_end(outputs, 'test')
         return {
             'avg_loss': avg_loss,
-            'avg_recall@1': avg_recall[0]
+            'avg_recall@1': avg_recall[0],
+            'avg_nll_loss': avg_nll,
+            'avg_ce_loss': avg_ce
         }
