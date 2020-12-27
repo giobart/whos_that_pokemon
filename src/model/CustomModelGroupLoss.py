@@ -76,7 +76,8 @@ class Siamese_Group(pl.LightningModule):
         return x, fc
 
     def forward(self, x):
-        return self.forward_one(x)
+        x, fc = self.forward_one(x)
+        return x, fc
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.params_to_update, lr=self.hparams["lr"],
@@ -91,9 +92,9 @@ class Siamese_Group(pl.LightningModule):
         else:
             return optimizer
 
-    def calc_acc(self, batch, fc):
-        acc = evaluation_tool.evaluate(self, fc7=fc, batch=batch)
-        return torch.tensor(acc)
+    def calc_recall(self, batch, fc):
+        recall, _ = evaluation_tool.evaluate(self, fc7=fc, batch=batch)
+        return torch.tensor(recall)
 
     def general_step(self, batch):
         x, y = batch
@@ -113,8 +114,8 @@ class Siamese_Group(pl.LightningModule):
         loss = self.scaling_loss * loss1 + loss2
         self.test_loss_nan(loss)
 
-        acc = self.calc_acc(batch, fc)
-        return loss, acc
+        recall = self.calc_recall(batch, fc)
+        return loss, recall
 
     def test_loss_nan(self, loss):
         # check possible net divergence
@@ -125,18 +126,18 @@ class Siamese_Group(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         self.train()
-        loss, acc = self.general_step(train_batch)
+        loss, recall = self.general_step(train_batch)
         return {
             'loss': loss,
-            'acc': acc,
+            'recall': recall,
         }
 
     def validation_step(self, val_batch, batch_idx):
         self.eval()
-        loss, acc = self.general_step(val_batch)
+        loss, recall = self.general_step(val_batch)
         return {
             'loss': loss.detach().cpu(),
-            'acc': acc,
+            'recall': recall,
         }
 
     def test_step(self, batch, batch_idx):
@@ -146,13 +147,13 @@ class Siamese_Group(pl.LightningModule):
         # average over all batches aggregated during one epoch
         logger = False if mode == 'test' else True
         avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
-        avg_acc = torch.stack([x['acc'] for x in outputs]).mean(dim=0)
+        avg_recall = torch.stack([x['recall'] for x in outputs]).mean(dim=0)
         self.log(f'{mode}_loss', avg_loss, logger=logger)
         which_nearest_neighbors = [1, 10, 100, 1000]
         for i, k in enumerate(which_nearest_neighbors):
-            self.log(f'{mode}_R%_@{k} : ', 100 * avg_acc[i], logger=logger)
+            self.log(f'{mode}_R%_@{k} : ', 100 * avg_recall[i], logger=logger)
 
-        return avg_loss, avg_acc
+        return avg_loss, avg_recall
 
     def training_epoch_end(self, outputs):
         self.general_epoch_end(outputs, 'train')
@@ -161,8 +162,8 @@ class Siamese_Group(pl.LightningModule):
         self.general_epoch_end(outputs, 'val')
 
     def test_epoch_end(self, outputs):
-        avg_loss, avg_acc = self.general_epoch_end(outputs, 'test')
+        avg_loss, avg_recall = self.general_epoch_end(outputs, 'test')
         return {
             'avg_loss': avg_loss,
-            'avg_acc@1': avg_acc[0]
+            'avg_recall@1': avg_recall[0]
         }
