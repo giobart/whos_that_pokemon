@@ -10,13 +10,18 @@ from torch.utils.data import random_split
 from src.tools.image_preprocess import FaceAlignTransform
 from src.tools.combine_sampler import CombineSampler
 from collections import defaultdict
+from src.tools.dataset_tools import get_labels
+from enum import Enum
+import config_celeba
 
+class DATASETS(Enum):
+    CELEBA = 1
 
 # TODO: Dataloader is nearly the same for also for lfw so lets move it to a common place
 class CelebA_DataModule(pl.LightningDataModule):
 
-    def __init__(self, dataset, batch_size=32, splitting_points=(0.10, 0.10), num_workers=4,
-                 manual_split=False, valid_dataset=None, test_dataset=None, input_shape=(3, 218, 178),
+    def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32, splitting_points=(0.10, 0.10),
+                 num_workers=4, manual_split=False, valid_dataset=None, test_dataset=None, input_shape=(3, 218, 178),
                  num_classes_iter=8):
         """
         Args:
@@ -30,7 +35,7 @@ class CelebA_DataModule(pl.LightningDataModule):
         super().__init__()
         self.batch_size = batch_size
         self.splitrate = 0.2
-        self.dataset = dataset
+        self.name = name
         self.splitting_points = splitting_points
         self.num_workers = num_workers
         self.train_dataset = None
@@ -40,6 +45,8 @@ class CelebA_DataModule(pl.LightningDataModule):
         self.input_shape = input_shape
         self.num_classes_iter = num_classes_iter
         self.num_elements_class = int(batch_size / num_classes_iter)
+        self.nb_classes = nb_classes
+        self.class_split = class_split
         torch.manual_seed(0)
 
     def setup(self, stage=None):
@@ -50,11 +57,48 @@ class CelebA_DataModule(pl.LightningDataModule):
             transforms.Resize((self.input_shape[1], self.input_shape[2]))
         ])
 
-        self.dataset.set_transform(transform)
+        if self.name == DATASETS.CELEBA:
+            labels_map = get_labels(config=config_celeba)
+        else:
+            raise Exception("Unknow dataset! Please choose a valid dataset name.")
 
-        if not self.manual_split:
+        valid, test = self.splitting_points
+        train = 1 - (valid + test)
+        if self.class_split:
+            nb_classes_train = int(self.nb_classes * train)
+            nb_classes_val = int(self.nb_classes * valid)
+            nb_classes_test = int(self.nb_classes * test)
+
+            total = sum([nb_classes_train, nb_classes_val, nb_classes_test])
+            diff = abs(self.nb_classes - total)
+
+            if diff != 0:
+                nb_classes_test += diff
+
+            total = sum([nb_classes_train, nb_classes_val, nb_classes_test])
+            diff = abs(self.nb_classes - total)
+
+            assert diff == 0
+            print('split size', nb_classes_train, nb_classes_val, nb_classes_test)
+
+            start, end = 0,  nb_classes_train
+            print('train classes', start, end)
+            self.train_dataset = CelebADataset(labels_map, num_classes=list(range(end)))
+
+            start, end = end, end+nb_classes_val
+            print('val classes', start, end)
+            self.val_dataset = CelebADataset(labels_map, num_classes=list(range(start, end)))
+
+            start, end = start, end = end, end+nb_classes_test
+            print('test classes', start, end)
+            self.test_dataset = CelebADataset(labels_map, num_classes=list(range(start, end)))
+
+            for i_dataset in [self.train_dataset, self.val_dataset, self.test_dataset]:
+                i_dataset.set_transform(transform)
+
+        elif not self.manual_split:
             # define split point
-            valid, test = self.splitting_points
+            self.dataset.set_transform(transform)
             n_samples = len(self.dataset)
             val_size = int(n_samples * valid)
             test_size = int(n_samples * test)
@@ -69,6 +113,7 @@ class CelebA_DataModule(pl.LightningDataModule):
             self.test_dataset.set_transform(transform)
 
         self.train_list_of_indices_for_each_class = self._get_list_of_indices(self.train_dataset)
+        self.val_list_of_indices_for_each_class = self._get_list_of_indices(self.val_dataset)
 
 
     def _get_list_of_indices(self, dataset):
@@ -100,7 +145,10 @@ class CelebA_DataModule(pl.LightningDataModule):
                                            batch_size=self.batch_size * 2,
                                            num_workers=self.num_workers,
                                            shuffle=False,
-                                           sampler=None,
+                                           sampler=CombineSampler(
+                                               self.val_list_of_indices_for_each_class,
+                                               int(self.num_classes_iter * 2),
+                                               self.num_elements_class),
                                            collate_fn=None
                                            )
 
@@ -123,7 +171,7 @@ class CelebADataset(Dataset):
             data_map: key,value map of people and faces
         """
         self.image_map = data_map
-        self.labels = list(range(num_classes))
+        self.labels = num_classes
         self.ys, self.im_paths = self._idx_people_encode()
         # self.idx_encoding = self._idx_people_encode()
         self.seed = seed(len(data_map.keys()))
@@ -140,7 +188,7 @@ class CelebADataset(Dataset):
         ys, im_paths = [], []
         for key in self.image_map:
             for img_path in self.image_map[key]:
-                if key in self.labels:
+                if key-1 in self.labels:
                     ys += [key - 1]
                     im_paths.append(img_path)
 

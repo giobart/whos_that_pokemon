@@ -14,8 +14,8 @@ def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None)
     with torch.no_grad():
         if batch is None:
             for batch in dataloader:
-                fc7, Y = inference_group(model, batch, fc7)
-                fc7s.append(fc7)
+                fc7_out, Y = inference_group(model, fc7, batch=batch)
+                fc7s.append(fc7_out)
                 L.append(Y)
         else:
             fc7, Y = inference_group(model, fc7, batch=batch, X=images)
@@ -38,6 +38,8 @@ def inference_group(model, fc7, batch=None, X=None):
 
     # normalize the features in the unit ball
     fc7 = F.normalize(fc7, p=2, dim=1)
+
+
     if Y is None:
         return fc7.cpu(), None
 
@@ -45,16 +47,27 @@ def inference_group(model, fc7, batch=None, X=None):
 
 
 def evaluate(model, dataloader=None, fc7=None, batch=None):
+    nb_classes = model.nb_classes
 
     model_is_training = model.training
     model.eval()
 
     # calculate embeddings with model, also get labels
     emb, labels = predict_batchwise(model, dataloader=dataloader, fc7=fc7, batch=batch)
+    if labels.shape[0] > emb.shape[0]:
+        pass
+
+    nmi = None
+    if dataloader is not None:
+        nmi = evaluation.calc_normalized_mutual_information(labels, evaluation.cluster_by_kmeans(emb, nb_classes))
+
     recall = []
     # rank the nearest neighbors for each input
     k_pred_labels = evaluation.assign_by_euclidian_at_k(emb, labels, 1000)
-    which_nearest_neighbors = [1, 10, 100, 1000]
+    if batch is None:
+        which_nearest_neighbors = [1, 10, 100, 1000]
+    else:
+        which_nearest_neighbors = [1]
 
     for k in which_nearest_neighbors:
         r_at_k = evaluation.calc_recall_at_k(labels, k_pred_labels, k)
@@ -63,4 +76,4 @@ def evaluate(model, dataloader=None, fc7=None, batch=None):
 
     model.train(model_is_training)  # revert to previous training state
 
-    return recall
+    return recall, nmi
