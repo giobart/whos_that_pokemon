@@ -27,7 +27,7 @@ This service exposes a very simple REST API with 3 methods:
 {
 	"name":"giovanni",
 	"surname":"bartolomeo",
-	"img_features":[int], 
+	"img_features":[[float],[float]], 
 	"img_base64":"base64 encoded image"
 }
 ``` 
