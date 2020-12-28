@@ -15,7 +15,7 @@ class CNN_MODEL(Enum):
     InceptionResnetV1 = 2
 
 class Siamese(pl.LightningModule):
-    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL.MyCNN, freeze_layers=True):
+    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL.InceptionResnetV1, freeze_layers=True):
         super().__init__()
         self.hparams = hparams
         self.loss_fn = hparams['loss_fn']
