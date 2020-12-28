@@ -12,3 +12,4 @@ facenet-pytorch
 enum34
 torchsummary
 pandas
+scikit-learn
