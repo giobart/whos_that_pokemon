@@ -22,7 +22,7 @@ class CelebA_DataModule(pl.LightningDataModule):
 
     def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32, splitting_points=(0.10, 0.10),
                  num_workers=4, manual_split=False, valid_dataset=None, test_dataset=None, input_shape=(3, 218, 178),
-                 num_classes_iter=8):
+                 num_classes_iter=8, finetune=False):
         """
         Args:
             dataset: LfwImagesDataset(), if manual_split==True than this is the LfwImagesPairsDataset train set
@@ -47,6 +47,7 @@ class CelebA_DataModule(pl.LightningDataModule):
         self.num_elements_class = int(batch_size / num_classes_iter)
         self.nb_classes = nb_classes
         self.class_split = class_split
+        self.finetune = finetune
         torch.manual_seed(0)
 
     def setup(self, stage=None):
@@ -65,36 +66,38 @@ class CelebA_DataModule(pl.LightningDataModule):
         valid, test = self.splitting_points
         train = 1 - (valid + test)
         if self.class_split:
-            nb_classes_train = int(self.nb_classes * train)
-            nb_classes_val = int(self.nb_classes * valid)
+            nb_classes_train_val = int(self.nb_classes * (train+valid))
             nb_classes_test = int(self.nb_classes * test)
 
-            total = sum([nb_classes_train, nb_classes_val, nb_classes_test])
+            total = sum([nb_classes_train_val, nb_classes_test])
             diff = abs(self.nb_classes - total)
 
             if diff != 0:
                 nb_classes_test += diff
 
-            total = sum([nb_classes_train, nb_classes_val, nb_classes_test])
+            total = sum([nb_classes_train_val, nb_classes_test])
             diff = abs(self.nb_classes - total)
 
             assert diff == 0
-            print('split size', nb_classes_train, nb_classes_val, nb_classes_test)
 
-            start, end = 0,  nb_classes_train
+            start, end = 0,  nb_classes_train_val
             print('train classes', start, end)
-            self.train_dataset = CelebADataset(labels_map, num_classes=list(range(end)))
 
-            start, end = end, end+nb_classes_val
-            print('val classes', start, end)
-            self.val_dataset = CelebADataset(labels_map, num_classes=list(range(start, end)))
+            self.train_val_dataset = CelebADataset(labels_map, num_classes=list(range(end)))
 
-            start, end = start, end = end, end+nb_classes_test
+            n_samples = len(self.train_val_dataset)
+            val_size = int(n_samples * valid)
+            split_size = [n_samples - val_size, val_size]
+
+            start, end = end, end+nb_classes_test
             print('test classes', start, end)
             self.test_dataset = CelebADataset(labels_map, num_classes=list(range(start, end)))
 
-            for i_dataset in [self.train_dataset, self.val_dataset, self.test_dataset]:
+            for i_dataset in [self.train_val_dataset, self.test_dataset]:
                 i_dataset.set_transform(transform)
+
+            self.train_dataset, self.val_dataset = random_split(self.train_val_dataset, split_size)
+            print('split size', len(self.train_dataset), len(self.val_dataset), len(self.test_dataset))
 
         elif not self.manual_split:
             # define split point
@@ -114,6 +117,7 @@ class CelebA_DataModule(pl.LightningDataModule):
 
         self.train_list_of_indices_for_each_class = self._get_list_of_indices(self.train_dataset)
         self.val_list_of_indices_for_each_class = self._get_list_of_indices(self.val_dataset)
+        self.test_list_of_indices_for_each_class = self._get_list_of_indices(self.test_dataset)
 
 
     def _get_list_of_indices(self, dataset):
@@ -129,35 +133,53 @@ class CelebA_DataModule(pl.LightningDataModule):
 
     # return the dataloader for each split
     def train_dataloader(self):
+
+        sampler = None
+        if not self.finetune:
+            sampler = CombineSampler(
+                self.train_list_of_indices_for_each_class,
+                self.num_classes_iter,
+                self.num_elements_class)
+
         return torch.utils.data.DataLoader(self.train_dataset,
                                            batch_size=self.batch_size,
                                            num_workers=self.num_workers,
                                            shuffle=False,
-                                           sampler=CombineSampler(
-                                               self.train_list_of_indices_for_each_class,
-                                               self.num_classes_iter,
-                                               self.num_elements_class),
+                                           sampler=sampler,
                                            collate_fn=None
                                            )
 
     def val_dataloader(self):
+
+        sampler = None
+        if not self.finetune:
+            sampler = CombineSampler(
+                self.val_list_of_indices_for_each_class,
+                int(self.num_classes_iter * 2),
+                self.num_elements_class)
+
         return torch.utils.data.DataLoader(self.val_dataset,
                                            batch_size=self.batch_size * 2,
                                            num_workers=self.num_workers,
                                            shuffle=False,
-                                           sampler=CombineSampler(
-                                               self.val_list_of_indices_for_each_class,
-                                               int(self.num_classes_iter * 2),
-                                               self.num_elements_class),
+                                           sampler=sampler,
                                            collate_fn=None
                                            )
 
     def test_dataloader(self):
+
+        sampler = None
+        if not self.finetune:
+            sampler = CombineSampler(
+                self.test_list_of_indices_for_each_class,
+                int(self.num_classes_iter * 2),
+                self.num_elements_class)
+
         return torch.utils.data.DataLoader(self.test_dataset,
                                            batch_size=self.batch_size * 2,
                                            num_workers=self.num_workers,
                                            shuffle=False,
-                                           sampler=None,
+                                           sampler=sampler,
                                            collate_fn=None
                                            )
 

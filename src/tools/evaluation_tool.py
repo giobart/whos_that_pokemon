@@ -8,7 +8,6 @@ import numpy as np
 
 
 def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None):
-    net_type = model.CNN_MODEL
 
     fc7s, L = [], []
     with torch.no_grad():

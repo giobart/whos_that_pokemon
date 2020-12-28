@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 from src.tools.model_tools import ContrastiveLoss, get_labeled_and_unlabeled_points
 from src.model.GeneralLayers import FCN_layer
-from src.model.CNN_Nets import myCNN, InceptionRNV1
+from src.model.CNN_Nets import myCNN, BnInception
 from enum import Enum
 from pytorch_lightning.metrics.functional import accuracy
 from torch.optim.lr_scheduler import StepLR
@@ -14,11 +14,11 @@ from src.tools import evaluation_tool
 
 class CNN_MODEL_GROUP(Enum):
     MyCNN = 1
-    InceptionResnetV1 = 2
+    BN_INCEPTION = 2
 
 class Siamese_Group(pl.LightningModule):
     def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL_GROUP.MyCNN, freeze_layers=True,
-                 nb_classes=10177):
+                 nb_classes=10177, finetune=False, weights_path=None):
 
         super().__init__()
         self.hparams = hparams
@@ -32,7 +32,8 @@ class Siamese_Group(pl.LightningModule):
         self.temperature = hparams['temperature']
         self.num_labeled_points_class = hparams['num_labeled_points_class']
         self.nb_classes = nb_classes
-        self.CNN_MODEL = cnn_model
+        self.cnn_model = cnn_model
+        self.finetune = finetune
 
         # CNN
         if cnn_model == CNN_MODEL_GROUP.MyCNN:
@@ -41,19 +42,20 @@ class Siamese_Group(pl.LightningModule):
                               hparams["filter_channels"],
                               padding=int(hparams["filter_size"] / 2),
                               )  # size/8 x 4*channels
-        elif cnn_model == CNN_MODEL_GROUP.InceptionResnetV1:
-            self.conv = InceptionRNV1(freeze_layers=freeze_layers)
+            self.linear = nn.Sequential(
+                FCN_layer(self.cnn_output_size, hparams['n_hidden1'], dropout=hparams['dropout']),
+                FCN_layer(hparams['n_hidden1'], hparams['n_hidden2']),
+            )
+            self.classifier = nn.Linear(hparams['n_hidden2'], nb_classes)
+            self.input_size = self.conv.input_size
+            self.cnn_output_size = self.conv.output_size
+
+        elif cnn_model == CNN_MODEL_GROUP.BN_INCEPTION:
+            self.model = BnInception(num_classes=self.nb_classes, finetune=self.finetune, weights_path=weights_path)
+            self.input_size = self.model.input_size
+
         else:
             raise Exception("cnn_model is not defined correctly")
-
-        self.input_size = self.conv.input_size
-        self.cnn_output_size = self.conv.output_size
-
-        self.linear = nn.Sequential(
-            FCN_layer(self.cnn_output_size, hparams['n_hidden1'], dropout=hparams['dropout']),
-            FCN_layer(hparams['n_hidden1'], hparams['n_hidden2']),
-        )
-        self.classifier = nn.Linear(hparams['n_hidden2'], nb_classes)
 
         self._show_params_to_update()
 
@@ -69,11 +71,16 @@ class Siamese_Group(pl.LightningModule):
             self.params_to_update = self.parameters()
 
     def forward_one(self, x):
-        x = self.conv(x)
-        x = x.view(x.size()[0], -1).squeeze()
-        fc = self.linear(x)
-        x = self.classifier(fc)
-        return x, fc
+        if self.cnn_model == CNN_MODEL_GROUP.MyCNN:
+            x = self.conv(x)
+            x = x.view(x.size()[0], -1).squeeze()
+            fc = self.linear(x)
+            x = self.classifier(fc)
+            return x, fc
+
+        else:
+            x, fc = self.model(x)
+            return x, fc
 
     def forward(self, x):
         x, fc = self.forward_one(x)
@@ -117,6 +124,15 @@ class Siamese_Group(pl.LightningModule):
         recall = self.calc_recall(batch, fc)
         return loss, nll, ce, recall
 
+    def general_step_finetune(self, batch):
+        x, y = batch
+        logits, fc = self(x)
+
+        loss = self.criterion2(logits, y)
+        self.test_loss_nan(loss)
+
+        return loss
+
     def test_loss_nan(self, loss):
         # check possible net divergence
         if torch.isnan(loss):
@@ -126,23 +142,36 @@ class Siamese_Group(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         self.train()
-        loss, nll, ce, recall = self.general_step(train_batch)
-        return {
-            'loss': loss,
-            'recall': recall,
-            'nll': nll,
-            'ce': ce,
-        }
+
+        if self.finetune:
+            loss = self.general_step_finetune(train_batch)
+            return {
+                'loss': loss,
+            }
+        else:
+            loss, nll, ce, recall = self.general_step(train_batch)
+            return {
+                'loss': loss,
+                'recall': recall,
+                'nll': nll,
+                'ce': ce,
+            }
 
     def validation_step(self, val_batch, batch_idx):
         self.eval()
-        loss, nll, ce, recall = self.general_step(val_batch)
-        return {
-            'loss': loss,
-            'recall': recall,
-            'nll': nll,
-            'ce': ce,
-        }
+        if self.finetune:
+            loss = self.general_step_finetune(val_batch)
+            return {
+                'loss': loss,
+            }
+        else:
+            loss, nll, ce, recall = self.general_step(val_batch)
+            return {
+                'loss': loss,
+                'recall': recall,
+                'nll': nll,
+                'ce': ce,
+            }
 
     def test_step(self, batch, batch_idx):
         return self.validation_step(batch, batch_idx)
@@ -166,17 +195,37 @@ class Siamese_Group(pl.LightningModule):
 
         return avg_loss, avg_recall, avg_nll, avg_ce
 
+    def general_epoch_end_finetune(self, outputs, mode):  ### checked
+        # average over all batches aggregated during one epoch
+        logger = False if mode == 'test' else True
+        avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
+        self.log(f'{mode}_loss', avg_loss, logger=logger)
+
+        return avg_loss
+
     def training_epoch_end(self, outputs):
-        self.general_epoch_end(outputs, 'train')
+        if self.finetune:
+            self.general_epoch_end_finetune(outputs, 'train')
+        else:
+            self.general_epoch_end(outputs, 'train')
 
     def validation_epoch_end(self, outputs):
-        self.general_epoch_end(outputs, 'val')
+        if self.finetune:
+            self.general_epoch_end_finetune(outputs, 'val')
+        else:
+            self.general_epoch_end(outputs, 'val')
 
     def test_epoch_end(self, outputs):
-        avg_loss, avg_recall, avg_nll, avg_ce = self.general_epoch_end(outputs, 'test')
-        return {
-            'avg_loss': avg_loss,
-            'avg_recall@1': avg_recall[0],
-            'avg_nll_loss': avg_nll,
-            'avg_ce_loss': avg_ce
-        }
+        if self.finetune:
+            avg_loss, avg_recall, avg_nll, avg_ce = self.general_epoch_end_finetune(outputs, 'test')
+            return {
+                'avg_loss': avg_loss,
+            }
+        else:
+            avg_loss, avg_recall, avg_nll, avg_ce = self.general_epoch_end(outputs, 'test')
+            return {
+                'avg_loss': avg_loss,
+                'avg_recall@1': avg_recall[0],
+                'avg_nll_loss': avg_nll,
+                'avg_ce_loss': avg_ce
+            }
