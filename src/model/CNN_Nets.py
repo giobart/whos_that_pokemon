@@ -1,6 +1,7 @@
 from src.model.GeneralLayers import *
 from facenet_pytorch import InceptionResnetV1
-
+from src.model.inception_bn import bn_inception
+import torch
 
 class myCNN(nn.Module):
     def __init__(self, activ_fn, f_size, f_channels, padding=0):
@@ -32,6 +33,23 @@ class InceptionRNV1(nn.Module):
 
         self.model = nn.Sequential(*list(cnn.children())[:-4])
         self.model.eval()
+
+    def forward(self, x):
+        return self.model(x)
+
+class BnInception(nn.Module):
+    def __init__(self, num_classes=1000, finetune=False, weights_path: str = None):
+        super().__init__()
+        self.input_size = 224
+        self.output_size = num_classes
+
+        if finetune:
+            self.model = bn_inception(pretrained=True, nb_classes=num_classes)
+        else:
+            self.model = bn_inception(pretrained=True, nb_classes=num_classes)
+            self.model.last_linear = nn.Linear(1024, num_classes)
+            if weights_path is not None:
+                self.model.load_state_dict(torch.load(weights_path))
 
     def forward(self, x):
         return self.model(x)
