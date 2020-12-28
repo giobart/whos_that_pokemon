@@ -14,8 +14,8 @@ The Data Module takes in input a dataset and generates training,validation and t
 Currently the Data Module uses an image transformation that aligns the faces using an affine transformation. 
 This can be changed inside `lfw_lightning_data_module` changing the default `FaceAlignTransform(FaceAlignTransform.ROTATION)` to `FaceAlignTransform(FaceAlignTransform.AFFINE)` in order to have the experimental affine transformation. 
 
-## Image storage service
-The image storage service belongs to his own module under image-registration-service.
+## Image registration service
+The image registration service belongs to his own module under image-registration-service and is used to store the images to a Mongo DB.
 Before starting the service is mandatory to configure the credentials in the `credentials.py` file. The credentials for the database are shared in private among the team members. 
 Is possible to start up the service typing `python entry.py` inside the module folder.
 
@@ -38,5 +38,8 @@ if the image features are already available is possible to populate the **img_fe
 	- For the second batch of 10 elements we type `api/get_all/10/2`
 - DELETE http://127.0.0.1:5000/api/<employee_id> to delete an entry from the db using the id
  
-
+## Running the UI
+Move inside the ` face-detection-UI ` folder and run the UI with `python entry.py`. This will start the web server at localhost:5006. <br>
+In order to upload a new image to the database you must also run the `ìmage-registration-service` on the default 5005 port.  <br><br>
+Disclaimer: Don't trust the username & pass login, it is just a demonstrative login with default username "admin" and password "admin". Nothing more than a graphical feature to simulate a system administrator that adds new people to the database.
 
