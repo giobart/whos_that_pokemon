@@ -3,7 +3,7 @@ import os
 import tarfile
 import config
 import glob
-from google_drive_downloader import GoogleDriveDownloader as gdd
+from src.tools import gdrive_helper
 import random
 import zipfile
 
@@ -17,9 +17,8 @@ def dataset_download_targz(config=config):
         return
     target_filepath = path.join(".", config.DATASET_ZIP_NAME)
     # gdown.download(config.DATASET_URL, target_filepath, quiet=False)
-    gdd.download_file_from_google_drive(file_id=config.DATASET_URL,
-                                        dest_path=target_filepath,
-                                        unzip=False)
+    gdrive_helper.download_file_from_google_drive(config.DATASET_URL, target_filepath)
+
     with tarfile.open(target_filepath) as tar:
         tar.extractall(path=config.DATASET_MAIN_FOLDER_NAME)
     os.remove(target_filepath)
@@ -37,14 +36,9 @@ def dataset_gdrive_download(config, url=None):
 
 
         if url is not None:
-            gdd.download_file_from_google_drive(file_id=url,
-                                        dest_path=target_filepath,
-                                        unzip=False)
+            gdrive_helper.download_file_from_google_drive(url, target_filepath)
         else:
-            gdd.download_file_from_google_drive(file_id=config.DRIVE_URL,
-                            dest_path=target_filepath,
-                            unzip=False)
-    
+            gdrive_helper.download_file_from_google_drive(config.DRIVE_URL, target_filepath)
 
         zip_file = zipfile.ZipFile(target_filepath, "r")
         zip_file.extractall(path=config.DATASET_MAIN_FOLDER_NAME)
@@ -59,10 +53,8 @@ def dataset_gdrive_download(config, url=None):
 
 #         gdown.download(config.LABEL_TXT_URL, config.LABEL_TXT_PATH, quiet=False)
 
-    gdd.download_file_from_google_drive(file_id=config.LABEL_TXT_URL,
-                                        dest_path=config.LABEL_TXT_PATH,
-                                        unzip=False)
-    
+    gdrive_helper.download_file_from_google_drive(config.LABEL_TXT_URL, config.LABEL_TXT_PATH)
+
 def get_labels(config=config):
     #TODO: save images in different folders named as the labels to make accessing them faster
     labels_map = {}
@@ -95,17 +87,13 @@ def get_pairs(config=config):
         target_filepath = path.join(".", config.PAIR_TXT_TRAIN_PATH)
 #         gdown.download(config.PAIR_TXT_TRAIN_URL, target_filepath, quiet=False)
 
-        gdd.download_file_from_google_drive(file_id=config.PAIR_TXT_TRAIN_URL,
-                                        dest_path=target_filepath,
-                                        unzip=False)
+        gdrive_helper.download_file_from_google_drive(config.PAIR_TXT_TRAIN_URL, target_filepath)
     
         print("downloading test pairs ")
         target_filepath = path.join(".", config.PAIR_TXT_VALID_PATH)
 #         gdown.download(config.PAIR_TXT_VALID_URL, target_filepath, quiet=False)
 
-        gdd.download_file_from_google_drive(file_id=config.PAIR_TXT_VALID_URL,
-                                        dest_path=target_filepath,
-                                        unzip=False)
+        gdrive_helper.download_file_from_google_drive(config.PAIR_TXT_VALID_URL, target_filepath)
     
         print("splitting test pairs into validation and test pairs")
         valid_file = open(config.PAIR_TXT_VALID_PATH)
