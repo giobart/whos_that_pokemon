@@ -5,7 +5,7 @@ requests>=2.25.0
 matplotlib>=3.3.3
 Pillow>=8.0.1
 scikit-image>=0.17.2
-gdown>=3.12.2
+googledrivedownloader
 opencv-python
 scipy
 facenet-pytorch

@@ -1,13 +1,11 @@
 from os import path
 import os
-import requests
 import tarfile
 import config
 import glob
-import gdown
+from google_drive_downloader import GoogleDriveDownloader as gdd
 import random
 import zipfile
-import pandas as pd
 
 # TARGET_FOLDER = path.join(".", config.DATASET_FOLDER_IMG)
 FOLDER_LIST = []
@@ -18,7 +16,10 @@ def dataset_download_targz(config=config):
         print("Dataset already downloaded")
         return
     target_filepath = path.join(".", config.DATASET_ZIP_NAME)
-    gdown.download(config.DATASET_URL, target_filepath, quiet=False)
+    # gdown.download(config.DATASET_URL, target_filepath, quiet=False)
+    gdd.download_file_from_google_drive(file_id=config.DATASET_URL,
+                                        dest_path=target_filepath,
+                                        unzip=False)
     with tarfile.open(target_filepath) as tar:
         tar.extractall(path=config.DATASET_MAIN_FOLDER_NAME)
     os.remove(target_filepath)
