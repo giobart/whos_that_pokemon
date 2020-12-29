@@ -1,21 +1,13 @@
-import dlib
 import cv2
 from facenet_pytorch import MTCNN
-import os
-from config import MODEL_DATA_PATH, LANDMARK_MODEL_DLIB_URL
-import gdown
 import numpy as np
 from PIL import Image
-import bz2
 import math
-import scipy.misc
 
 ALPHA_SHIFT = 10
 LEFT_EYE_POS = lambda w, h: (w / 3 + ALPHA_SHIFT, h / 3 + ALPHA_SHIFT)
 RIGHT_EYE_POS = lambda w, h: ((2 * w / 3) - ALPHA_SHIFT, h / 3 + ALPHA_SHIFT)
 NOSE_POS = lambda w, h: ((w / 2) + ALPHA_SHIFT, (3 * h / 5) + ALPHA_SHIFT)
-
-
 
 def angle_between_2_points(p1, p2):
     x1, y1 = p1
