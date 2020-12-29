@@ -30,10 +30,21 @@ def dataset_gdrive_download(config, url=None):
         print("Dataset already downloaded")
     else:
         target_filepath = path.join(".", config.DATASET_ZIP_NAME)
+#         if url is not None:
+#             gdown.download(url, target_filepath, quiet=False)
+#         else:
+#             gdown.download(config.DRIVE_URL, target_filepath, quiet=False)
+
+
         if url is not None:
-            gdown.download(url, target_filepath, quiet=False)
+            gdd.download_file_from_google_drive(file_id=url,
+                                        dest_path=target_filepath,
+                                        unzip=False)
         else:
-            gdown.download(config.DRIVE_URL, target_filepath, quiet=False)
+            gdd.download_file_from_google_drive(file_id=config.DRIVE_URL,
+                            dest_path=target_filepath,
+                            unzip=False)
+    
 
         zip_file = zipfile.ZipFile(target_filepath, "r")
         zip_file.extractall(path=config.DATASET_MAIN_FOLDER_NAME)
@@ -46,8 +57,12 @@ def dataset_gdrive_download(config, url=None):
             print("Labels already downloaded")
             return
 
-        gdown.download(config.LABEL_TXT_URL, config.LABEL_TXT_PATH, quiet=False)
+#         gdown.download(config.LABEL_TXT_URL, config.LABEL_TXT_PATH, quiet=False)
 
+    gdd.download_file_from_google_drive(file_id=config.LABEL_TXT_URL,
+                                        dest_path=config.LABEL_TXT_PATH,
+                                        unzip=False)
+    
 def get_labels(config=config):
     #TODO: save images in different folders named as the labels to make accessing them faster
     labels_map = {}
@@ -78,10 +93,20 @@ def get_pairs(config=config):
     if len(folder_list) == 0:
         print("downloading training pairs")
         target_filepath = path.join(".", config.PAIR_TXT_TRAIN_PATH)
-        gdown.download(config.PAIR_TXT_TRAIN_URL, target_filepath, quiet=False)
+#         gdown.download(config.PAIR_TXT_TRAIN_URL, target_filepath, quiet=False)
+
+        gdd.download_file_from_google_drive(file_id=config.PAIR_TXT_TRAIN_URL,
+                                        dest_path=target_filepath,
+                                        unzip=False)
+    
         print("downloading test pairs ")
         target_filepath = path.join(".", config.PAIR_TXT_VALID_PATH)
-        gdown.download(config.PAIR_TXT_VALID_URL, target_filepath, quiet=False)
+#         gdown.download(config.PAIR_TXT_VALID_URL, target_filepath, quiet=False)
+
+        gdd.download_file_from_google_drive(file_id=config.PAIR_TXT_VALID_URL,
+                                        dest_path=target_filepath,
+                                        unzip=False)
+    
         print("splitting test pairs into validation and test pairs")
         valid_file = open(config.PAIR_TXT_VALID_PATH)
         lines = valid_file.readlines()[1:]
