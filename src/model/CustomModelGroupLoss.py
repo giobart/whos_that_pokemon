@@ -17,7 +17,7 @@ class CNN_MODEL_GROUP(Enum):
     BN_INCEPTION = 2
 
 class Siamese_Group(pl.LightningModule):
-    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL_GROUP.MyCNN, freeze_layers=True,
+    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL_GROUP.BN_INCEPTION, freeze_layers=True,
                  nb_classes=10177, finetune=False, weights_path=None):
 
         super().__init__()

@@ -45,7 +45,7 @@ def inference_group(model, fc7, batch=None, X=None):
     return fc7.cpu(), Y.cpu()
 
 
-def evaluate(model, dataloader=None, fc7=None, batch=None):
+def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False):
     nb_classes = model.nb_classes
 
     model_is_training = model.training
@@ -57,7 +57,7 @@ def evaluate(model, dataloader=None, fc7=None, batch=None):
         pass
 
     nmi = None
-    if dataloader is not None:
+    if dataloader is not None and calc_nmi:
         nmi = evaluation.calc_normalized_mutual_information(labels, evaluation.cluster_by_kmeans(emb, nb_classes))
 
     recall = []
