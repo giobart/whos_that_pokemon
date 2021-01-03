@@ -17,7 +17,7 @@ def visualize_samples(imgs_path, gray=False, n_cols=5, n_rows=1):
             plt.imshow(img)
     plt.show()
 
-def visualize_torch(images, gray=False, n_cols=5, n_rows=1):
+def visualize_torch(images, gray=False, n_cols=5, n_rows=1, caption=""):
     """Visualize samples."""
 
     fig = plt.figure(figsize = (3*n_cols,3*n_rows))
@@ -29,4 +29,5 @@ def visualize_torch(images, gray=False, n_cols=5, n_rows=1):
             plt.imshow(img, cmap=plt.cm.gray)
         else:
             plt.imshow(img)
+    fig.text(0, 0, caption)
     return fig

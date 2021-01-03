@@ -2,13 +2,13 @@ from src.model.CustomModelGroupLoss import Siamese_Group, CNN_MODEL_GROUP
 
 
 def define_model(trial):
-    num_classes = 1000
+    num_classes = 10177
     cnn_model = CNN_MODEL_GROUP.BN_INCEPTION
 
     if cnn_model == CNN_MODEL_GROUP.MyCNN:
         model_hparams = {
-            "lr": 0.001,
-            "weight_decay": 1e-5,
+            "lr": trial.suggest_float("lr", 1e-5, 1e-3, log=True),
+            "weight_decay": trial.suggest_float("weight_decay", 1e-8, 1e-4, log=True),
             "filter_channels": 4,
             "filter_size": 3,
             "dropout": 0.00,
@@ -42,5 +42,4 @@ def define_model(trial):
                           finetune=False,
                           weights_path=None,
                           )
-
     return model
