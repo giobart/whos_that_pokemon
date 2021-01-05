@@ -183,8 +183,7 @@ def save_images_in_folders(config = None):
         src_url = os.path.join(config.DATASET_FOLDER_IMG, image_name)
 
         if not os.path.exists(src_url):
-            print('images to folders already done\n')
-            return
+            continue
 
         dst_url_dir = os.path.join(dataset_url, str(label))
         if not os.path.exists(dst_url_dir):
