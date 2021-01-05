@@ -21,7 +21,7 @@ class DATASETS(Enum):
 class Classification_Model(pl.LightningDataModule):
     def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32, splitting_points=(0.10, 0.10),
                  num_workers=4, manual_split=False, valid_dataset=None, test_dataset=None, input_shape=(3, 218, 178),
-                 num_classes_iter=8, finetune=False):
+                 num_classes_iter=8, finetune=False, in_folders=False):
         """
         Args:
             dataset: LfwImagesDataset(), if manual_split==True than this is the LfwImagesPairsDataset train set
@@ -47,6 +47,7 @@ class Classification_Model(pl.LightningDataModule):
         self.nb_classes = nb_classes
         self.class_split = class_split
         self.finetune = finetune
+        self.in_folders = in_folders
         torch.manual_seed(0)
 
     def setup(self, stage=None):
@@ -59,7 +60,7 @@ class Classification_Model(pl.LightningDataModule):
         transform = get_transforms(self.input_shape)
 
         if self.name == DATASETS.CELEBA:
-            labels_map = get_labels(config=config_celeba, in_folders=True)
+            labels_map = get_labels(config=config_celeba, in_folders=self.in_folders)
         elif self.name == DATASETS.LFW:
             labels_map = get_dataset_filename_map(config = config_lfw)
         else:

@@ -10,22 +10,50 @@ import shutil
 from collections import defaultdict
 from torchvision import transforms
 from src.tools.image_preprocess import FaceAlignTransform
+import urllib
+from tqdm import tqdm
 
 # TARGET_FOLDER = path.join(".", config.DATASET_FOLDER_IMG)
 FOLDER_LIST = []
+
+
+class DownloadProgressBar(tqdm):
+    def update_to(self, b=1, bsize=1, tsize=None):
+        if tsize is not None:
+            self.total = tsize
+        self.update(b * bsize - self.n)
+
+
+def _download_zip(url, zip_filename, target_dir):
+    zip_path = os.path.join(target_dir, zip_filename)
+    if zip_filename not in os.listdir(target_dir):
+        print('\ndownloading zip file...')
+
+        with DownloadProgressBar(unit='B', unit_scale=True,
+                                 miniters=1, desc=url.split('/')[-1]) as t:
+            urllib.request.urlretrieve(url, zip_path, reporthook=t.update_to)
+    else:
+        print('Dir is not empty')
+
+    return zip_path
+
 
 def dataset_download_targz(config=config_lfw):
     folder_list = glob.glob(path.join(config.DATASET_FOLDER_IMG, "*"))
     if len(folder_list) != 0:
         print("Dataset already downloaded")
         return
-    target_filepath = path.join(".", config.DATASET_ZIP_NAME)
+    # target_filepath = path.join(".", config.DATASET_ZIP_NAME)
     # gdown.download(config.DATASET_URL, target_filepath, quiet=False)
-    gdrive_helper.download_file_from_google_drive(config.DATASET_URL, target_filepath)
+    # gdrive_helper.download_file_from_google_drive(config.DATASET_URL, target_filepath)
+    target_filepath = path.join(".")
+    _download_zip(config.DATASET_URL, config.DATASET_ZIP_NAME, target_filepath)
+    target_filepath = path.join(".", config.DATASET_ZIP_NAME)
 
     with tarfile.open(target_filepath) as tar:
         tar.extractall(path=config.DATASET_MAIN_FOLDER_NAME)
     os.remove(target_filepath)
+
 
 def dataset_gdrive_download(config=config_lfw, url=None):
     folder_list = glob.glob(path.join(config.DATASET_FOLDER_IMG, "*"))
@@ -33,11 +61,10 @@ def dataset_gdrive_download(config=config_lfw, url=None):
         print("Dataset already downloaded")
     else:
         target_filepath = path.join(".", config.DATASET_ZIP_NAME)
-#         if url is not None:
-#             gdown.download(url, target_filepath, quiet=False)
-#         else:
-#             gdown.download(config.DRIVE_URL, target_filepath, quiet=False)
-
+        #         if url is not None:
+        #             gdown.download(url, target_filepath, quiet=False)
+        #         else:
+        #             gdown.download(config.DRIVE_URL, target_filepath, quiet=False)
 
         if url is not None:
             gdrive_helper.download_file_from_google_drive(url, target_filepath)
@@ -55,11 +82,12 @@ def dataset_gdrive_download(config=config_lfw, url=None):
             print("Labels already downloaded")
             return
 
-#         gdown.download(config.LABEL_TXT_URL, config.LABEL_TXT_PATH, quiet=False)
+    #         gdown.download(config.LABEL_TXT_URL, config.LABEL_TXT_PATH, quiet=False)
 
     gdrive_helper.download_file_from_google_drive(config.LABEL_TXT_URL, config.LABEL_TXT_PATH)
 
-def get_labels(config=config_lfw, in_folders = False):
+
+def get_labels(config=config_lfw, in_folders=False):
     labels_map = defaultdict(list)
 
     with open(config.LABEL_TXT_PATH) as file:
@@ -77,6 +105,7 @@ def get_labels(config=config_lfw, in_folders = False):
 
     return labels_map
 
+
 def get_pairs(config=config_lfw):
     """
     :return: {"train": [], "validation": [], "test": []} containing a each a list [[v1,v2,v3,v4]...] of pair.txt
@@ -87,30 +116,29 @@ def get_pairs(config=config_lfw):
     if len(folder_list) == 0:
         print("downloading training pairs")
         target_filepath = path.join(".", config.PAIR_TXT_TRAIN_PATH)
-#         gdown.download(config.PAIR_TXT_TRAIN_URL, target_filepath, quiet=False)
+        #         gdown.download(config.PAIR_TXT_TRAIN_URL, target_filepath, quiet=False)
 
         gdrive_helper.download_file_from_google_drive(config.PAIR_TXT_TRAIN_URL, target_filepath)
-    
+
         print("downloading test pairs ")
         target_filepath = path.join(".", config.PAIR_TXT_VALID_PATH)
-#         gdown.download(config.PAIR_TXT_VALID_URL, target_filepath, quiet=False)
+        #         gdown.download(config.PAIR_TXT_VALID_URL, target_filepath, quiet=False)
 
         gdrive_helper.download_file_from_google_drive(config.PAIR_TXT_VALID_URL, target_filepath)
-    
+
         print("splitting test pairs into validation and test pairs")
         valid_file = open(config.PAIR_TXT_VALID_PATH)
         lines = valid_file.readlines()[1:]
         valid_file.close()
         random.shuffle(lines)
-        valid_file = open(config.PAIR_TXT_VALID_PATH,"w")
-        for item in lines[0:int(len(lines)/2)]:
+        valid_file = open(config.PAIR_TXT_VALID_PATH, "w")
+        for item in lines[0:int(len(lines) / 2)]:
             valid_file.write("%s" % item)
         valid_file.close()
         test_file = open(config.PAIR_TXT_TEST_PATH, "w+")
         for item in lines[int(len(lines) / 2):]:
             test_file.write("%s" % item)
         test_file.close()
-
 
     train_file = open(config.PAIR_TXT_TRAIN_PATH)
     valid_file = open(config.PAIR_TXT_VALID_PATH)
@@ -136,6 +164,7 @@ def get_pairs(config=config_lfw):
         random.shuffle(pairmap["test"])
 
     return pairmap
+
 
 def get_dataset_filename_map(config=config_lfw, min_val=2, max_val=-1):
     """
@@ -169,7 +198,8 @@ def get_dataset_filename_map(config=config_lfw, min_val=2, max_val=-1):
             total_size += len(result[person_name])
     return result
 
-def save_images_in_folders(config = None):
+
+def save_images_in_folders(config=None):
     print('\nsaving images in folders')
     dataset_url = config.DATASET_FOLDER_IMG
 
@@ -195,6 +225,7 @@ def save_images_in_folders(config = None):
         os.remove(src_url)
     print('images to folders completed\n')
 
+
 def get_list_of_indices(dataset):
     ddict = defaultdict(list)
     for idx, (_, label) in enumerate(dataset):
@@ -206,7 +237,8 @@ def get_list_of_indices(dataset):
 
     return list_of_indices_for_each_class
 
-def get_transforms(input_shape, mode = 'train'):
+
+def get_transforms(input_shape, mode='train'):
     if mode == 'train' or mode == 'val' or mode == 'test':
         return transforms.Compose([
             transforms.Resize((input_shape[1], input_shape[2])),
