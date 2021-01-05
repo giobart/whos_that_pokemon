@@ -22,7 +22,6 @@ class Siamese_Group(pl.LightningModule):
 
         super().__init__()
         self.hparams = hparams
-        # self.loss_fn = hparams['loss_fn']
         self.scheduler_params = scheduler_params
         self.freeze_layers = freeze_layers
         self.gtg = gtg.GTG(nb_classes, max_iter=1, device='cuda')
@@ -227,5 +226,5 @@ class Siamese_Group(pl.LightningModule):
                 'avg_loss': avg_loss,
                 'avg_recall@1': avg_recall[0],
                 'avg_nll_loss': avg_nll,
-                'avg_ce_loss': avg_ce
+                'avg_ce_loss': avg_ce,
             }

@@ -4,22 +4,21 @@ import torch
 from torch.utils.data import Dataset
 from random import seed
 from PIL import Image
-from random import randint
 import numpy as np
 from torch.utils.data import random_split
-from src.tools.image_preprocess import FaceAlignTransform
 from src.tools.combine_sampler import CombineSampler
 from collections import defaultdict
-from src.tools.dataset_tools import get_labels
+from src.tools.dataset_tools import get_labels, get_dataset_filename_map, get_list_of_indices, get_transforms
 from enum import Enum
 import config_celeba
+import config_lfw
 
 class DATASETS(Enum):
-    CELEBA = 1
+    CELEBA = 1,
+    LFW = 2,
 
-# TODO: Dataloader is nearly the same for also for lfw so lets move it to a common place
-class CelebA_DataModule(pl.LightningDataModule):
-
+# class CelebA_DataModule(pl.LightningDataModule):
+class Classification_Model(pl.LightningDataModule):
     def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32, splitting_points=(0.10, 0.10),
                  num_workers=4, manual_split=False, valid_dataset=None, test_dataset=None, input_shape=(3, 218, 178),
                  num_classes_iter=8, finetune=False):
@@ -52,14 +51,17 @@ class CelebA_DataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         # transforms
-        transform = transforms.Compose([
-            # FaceAlignTransform(FaceAlignTransform.ROTATION),
-            transforms.ToTensor(),
-            transforms.Resize((self.input_shape[1], self.input_shape[2]))
-        ])
+        # transform = transforms.Compose([
+        #     # FaceAlignTransform(FaceAlignTransform.ROTATION),
+        #     transforms.ToTensor(),
+        #     transforms.Resize((self.input_shape[1], self.input_shape[2]))
+        # ])
+        transform = get_transforms(self.input_shape)
 
         if self.name == DATASETS.CELEBA:
-            labels_map = get_labels(config=config_celeba)
+            labels_map = get_labels(config=config_celeba, in_folders=True)
+        elif self.name == DATASETS.LFW:
+            labels_map = get_dataset_filename_map(config = config_lfw)
         else:
             raise Exception("Unknow dataset! Please choose a valid dataset name.")
 
@@ -83,7 +85,7 @@ class CelebA_DataModule(pl.LightningDataModule):
             start, end = 0,  nb_classes_train_val
             print('train classes', start, end)
 
-            self.train_val_dataset = CelebADataset(labels_map, num_classes=list(range(end)))
+            self.train_val_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
 
             n_samples = len(self.train_val_dataset)
             val_size = int(n_samples * valid)
@@ -91,7 +93,7 @@ class CelebA_DataModule(pl.LightningDataModule):
 
             start, end = end, end+nb_classes_test
             print('test classes', start, end)
-            self.test_dataset = CelebADataset(labels_map, num_classes=list(range(start, end)))
+            self.test_dataset = ClassificationDataset(labels_map, num_classes=list(range(start, end)))
 
             for i_dataset in [self.train_val_dataset, self.test_dataset]:
                 i_dataset.set_transform(transform)
@@ -115,21 +117,10 @@ class CelebA_DataModule(pl.LightningDataModule):
             self.val_dataset.set_transform(transform)
             self.test_dataset.set_transform(transform)
 
-        self.train_list_of_indices_for_each_class = self._get_list_of_indices(self.train_dataset)
-        self.val_list_of_indices_for_each_class = self._get_list_of_indices(self.val_dataset)
-        self.test_list_of_indices_for_each_class = self._get_list_of_indices(self.test_dataset)
+        # self.train_list_of_indices_for_each_class = get_list_of_indices(self.train_dataset)
+        # self.val_list_of_indices_for_each_class = get_list_of_indices(self.val_dataset)
+        # self.test_list_of_indices_for_each_class = get_list_of_indices(self.test_dataset)
 
-
-    def _get_list_of_indices(self, dataset):
-        ddict = defaultdict(list)
-        for idx, (_, label) in enumerate(dataset):
-            ddict[label].append(idx)
-
-        list_of_indices_for_each_class = []
-        for key in ddict:
-            list_of_indices_for_each_class.append(ddict[key])
-
-        return list_of_indices_for_each_class
 
     # return the dataloader for each split
     def train_dataloader(self):
@@ -137,7 +128,7 @@ class CelebA_DataModule(pl.LightningDataModule):
         sampler = None
         if not self.finetune:
             sampler = CombineSampler(
-                self.train_list_of_indices_for_each_class,
+                get_list_of_indices(self.train_dataset),
                 self.num_classes_iter,
                 self.num_elements_class)
 
@@ -154,7 +145,7 @@ class CelebA_DataModule(pl.LightningDataModule):
         sampler = None
         if not self.finetune:
             sampler = CombineSampler(
-                self.val_list_of_indices_for_each_class,
+                get_list_of_indices(self.val_dataset),
                 int(self.num_classes_iter * 2),
                 self.num_elements_class)
 
@@ -171,7 +162,7 @@ class CelebA_DataModule(pl.LightningDataModule):
         sampler = None
         if not self.finetune:
             sampler = CombineSampler(
-                self.test_list_of_indices_for_each_class,
+                get_list_of_indices(self.test_dataset),
                 int(self.num_classes_iter * 2),
                 self.num_elements_class)
 
@@ -184,34 +175,39 @@ class CelebA_DataModule(pl.LightningDataModule):
                                            )
 
 
-class CelebADataset(Dataset):
+# class CelebADataset(Dataset):
+class ClassificationDataset(Dataset):
     """ Face dataset. """
 
-    def __init__(self, data_map, num_classes, transform=None):
+    def __init__(self, data_map, num_classes, transform=None, map_to_int=False, offset_y=1):
         """
         Args:
             data_map: key,value map of people and faces
         """
+        self.offset_y = offset_y
         self.image_map = data_map
         self.labels = num_classes
+        self.map_to_int = map_to_int
+        if map_to_int:
+            self.class_to_idx = dict()
+            self.encode_classes()
         self.ys, self.im_paths = self._idx_people_encode()
-        # self.idx_encoding = self._idx_people_encode()
         self.seed = seed(len(data_map.keys()))
         self.transform = transform
 
+    def encode_classes(self):
+        for label in list(self.image_map.keys()):
+            self.class_to_idx[label] = self.class_to_idx.get(label, len(self.class_to_idx))
+
     def _idx_people_encode(self):
         """Private function used for the index encoding of the dataset"""
-        # idx_encoding = []
-        # for key in self.image_map:
-        #     for img_path in self.image_map[key]:
-        #         idx_encoding.append((key, img_path))
-        # return idx_encoding
-
         ys, im_paths = [], []
-        for key in self.image_map:
+        for key, value in list(self.image_map.items()):
             for img_path in self.image_map[key]:
-                if key-1 in self.labels:
-                    ys += [key - 1]
+                label_id = self.class_to_idx[key] if self.map_to_int else key
+
+                if label_id - self.offset_y in self.labels:
+                    ys += [label_id - self.offset_y]
                     im_paths.append(img_path)
 
         return ys, im_paths
@@ -224,11 +220,6 @@ class CelebADataset(Dataset):
         return len(np.unique(self.ys))
 
     def __getitem__(self, idx):
-        # label, path = self.idx_encoding[idx]
-        # image = Image.open(path)
-        # if self.transform is not None:
-        #     image = self.transform(image)
-        # return image, torch.from_numpy(np.array([label], dtype=np.float32))
         im = Image.open(self.im_paths[idx])
         if self.transform is not None:
             im = self.transform(im)

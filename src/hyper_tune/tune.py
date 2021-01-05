@@ -3,7 +3,7 @@ import torch
 from . import callbacks
 from .models import define_model
 import multiprocessing as mp
-from src.modules.celeba_data_module import CelebA_DataModule, DATASETS
+from src.modules.classification_data_model import Classification_Model, DATASETS
 
 def objective(trial):
     model = define_model(trial)
@@ -11,7 +11,7 @@ def objective(trial):
     num_classes_iter = 8
     num_elem_class = 6
     batch_size = num_classes_iter * num_elem_class
-    dataloader = CelebA_DataModule(name=DATASETS.CELEBA,
+    dataloader = Classification_Model(name=DATASETS.CELEBA,
                                    nb_classes=model.nb_classes,
                                    class_split=True,
                                    batch_size=batch_size,

@@ -1,16 +1,20 @@
 from os import path
 import os
 import tarfile
-import config
+import config_lfw
 import glob
 from src.tools import gdrive_helper
 import random
 import zipfile
+import shutil
+from collections import defaultdict
+from torchvision import transforms
+from src.tools.image_preprocess import FaceAlignTransform
 
 # TARGET_FOLDER = path.join(".", config.DATASET_FOLDER_IMG)
 FOLDER_LIST = []
 
-def dataset_download_targz(config=config):
+def dataset_download_targz(config=config_lfw):
     folder_list = glob.glob(path.join(config.DATASET_FOLDER_IMG, "*"))
     if len(folder_list) != 0:
         print("Dataset already downloaded")
@@ -23,7 +27,7 @@ def dataset_download_targz(config=config):
         tar.extractall(path=config.DATASET_MAIN_FOLDER_NAME)
     os.remove(target_filepath)
 
-def dataset_gdrive_download(config, url=None):
+def dataset_gdrive_download(config=config_lfw, url=None):
     folder_list = glob.glob(path.join(config.DATASET_FOLDER_IMG, "*"))
     if len(folder_list) != 0:
         print("Dataset already downloaded")
@@ -55,9 +59,8 @@ def dataset_gdrive_download(config, url=None):
 
     gdrive_helper.download_file_from_google_drive(config.LABEL_TXT_URL, config.LABEL_TXT_PATH)
 
-def get_labels(config=config):
-    #TODO: save images in different folders named as the labels to make accessing them faster
-    labels_map = {}
+def get_labels(config=config_lfw, in_folders = False):
+    labels_map = defaultdict(list)
 
     with open(config.LABEL_TXT_PATH) as file:
         data = file.readlines()
@@ -65,17 +68,16 @@ def get_labels(config=config):
     for line in data:
         split_line = line.split()
         label = int(split_line[1])
-        filepath = os.path.join(config.DATASET_FOLDER_IMG, split_line[0])
-
-        if label in labels_map:
-            labels_map[int(split_line[1])].append(filepath)
+        if in_folders:
+            filepath = os.path.join(config.DATASET_FOLDER_IMG, str(label), split_line[0])
         else:
-            labels_map[int(split_line[1])] = [filepath]
+            filepath = os.path.join(config.DATASET_FOLDER_IMG, split_line[0])
+
+        labels_map[label].append(filepath)
 
     return labels_map
 
-
-def get_pairs(config=config):
+def get_pairs(config=config_lfw):
     """
     :return: {"train": [], "validation": [], "test": []} containing a each a list [[v1,v2,v3,v4]...] of pair.txt
     """
@@ -135,7 +137,7 @@ def get_pairs(config=config):
 
     return pairmap
 
-def get_dataset_filename_map(min_val=2, max_val=-1):
+def get_dataset_filename_map(config=config_lfw, min_val=2, max_val=-1):
     """
         Function used to return a map key-value
         Key: Name of the person
@@ -154,7 +156,7 @@ def get_dataset_filename_map(min_val=2, max_val=-1):
     total_size = 0
     for folder_path in FOLDER_LIST:
         person_name = os.path.basename(os.path.normpath(folder_path))
-        image_list = glob.glob(path.join(folder_path, "*"+config.DATASET_IMAGE_EXTENSION))
+        image_list = glob.glob(path.join(folder_path, "*" + config_lfw.DATASET_IMAGE_EXTENSION))
         if len(image_list) >= min_val:
             if max_val == -1:
                 result[person_name] = image_list
@@ -166,3 +168,55 @@ def get_dataset_filename_map(min_val=2, max_val=-1):
 
             total_size += len(result[person_name])
     return result
+
+def save_images_in_folders(config = None):
+    print('\nsaving images in folders')
+    dataset_url = config.DATASET_FOLDER_IMG
+
+    with open(config.LABEL_TXT_PATH) as file:
+        data = file.readlines()
+
+    for line in data:
+        split_line = line.split()
+        label = int(split_line[1])
+        image_name = split_line[0]
+        src_url = os.path.join(config.DATASET_FOLDER_IMG, image_name)
+
+        if not os.path.exists(src_url):
+            print('images to folders already done\n')
+            return
+
+        dst_url_dir = os.path.join(dataset_url, str(label))
+        if not os.path.exists(dst_url_dir):
+            os.mkdir(dst_url_dir)
+
+        dst_url = os.path.join(dst_url_dir, image_name)
+
+        shutil.copyfile(src_url, dst_url)
+        os.remove(src_url)
+    print('images to folders completed\n')
+
+def get_list_of_indices(dataset):
+    ddict = defaultdict(list)
+    for idx, (_, label) in enumerate(dataset):
+        ddict[label].append(idx)
+
+    list_of_indices_for_each_class = []
+    for key in ddict:
+        list_of_indices_for_each_class.append(ddict[key])
+
+    return list_of_indices_for_each_class
+
+def get_transforms(input_shape, mode = 'train'):
+    if mode == 'train' or mode == 'val' or mode == 'test':
+        return transforms.Compose([
+            transforms.Resize((input_shape[1], input_shape[2])),
+            transforms.ToTensor(),
+        ])
+    elif mode == 'inference':
+        return transforms.Compose([
+            FaceAlignTransform(FaceAlignTransform.ROTATION),
+            transforms.Resize((input_shape[1], input_shape[2])),
+            transforms.ToTensor(),
+
+        ])
