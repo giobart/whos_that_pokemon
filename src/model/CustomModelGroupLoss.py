@@ -17,12 +17,11 @@ class CNN_MODEL_GROUP(Enum):
     BN_INCEPTION = 2
 
 class Siamese_Group(pl.LightningModule):
-    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL_GROUP.MyCNN, freeze_layers=True,
+    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL_GROUP.BN_INCEPTION, freeze_layers=False,
                  nb_classes=10177, finetune=False, weights_path=None):
 
         super().__init__()
         self.hparams = hparams
-        # self.loss_fn = hparams['loss_fn']
         self.scheduler_params = scheduler_params
         self.freeze_layers = freeze_layers
         self.gtg = gtg.GTG(nb_classes, max_iter=1, device='cuda')
@@ -191,15 +190,15 @@ class Siamese_Group(pl.LightningModule):
 
         which_nearest_neighbors = [1]
         for i, k in enumerate(which_nearest_neighbors):
-            self.log(f'{mode}_R%_@{k} : ', 100 * avg_recall[i], logger=logger)
+            self.log(f'{mode}_R%_@{k}', 100 * avg_recall[i], logger=logger)
 
-        return avg_loss, avg_recall, avg_nll, avg_ce
+        return avg_loss.cpu(), avg_recall.cpu(), avg_nll.cpu(), avg_ce.cpu()
 
     def general_epoch_end_finetune(self, outputs, mode):  ### checked
         # average over all batches aggregated during one epoch
         logger = False if mode == 'test' else True
         avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
-        self.log(f'{mode}_loss', avg_loss, logger=logger)
+        self.log(f'{mode}_loss', avg_loss.cpu(), logger=logger)
 
         return avg_loss
 
@@ -219,13 +218,13 @@ class Siamese_Group(pl.LightningModule):
         if self.finetune:
             avg_loss, avg_recall, avg_nll, avg_ce = self.general_epoch_end_finetune(outputs, 'test')
             return {
-                'avg_loss': avg_loss,
+                'avg_loss': avg_loss.cpu(),
             }
         else:
             avg_loss, avg_recall, avg_nll, avg_ce = self.general_epoch_end(outputs, 'test')
             return {
-                'avg_loss': avg_loss,
-                'avg_recall@1': avg_recall[0],
-                'avg_nll_loss': avg_nll,
-                'avg_ce_loss': avg_ce
+                'avg_loss': avg_loss.cpu(),
+                'avg_recall@1': avg_recall[0].cpu(),
+                'avg_nll_loss': avg_nll.cpu(),
+                'avg_ce_loss': avg_ce.cpu(),
             }

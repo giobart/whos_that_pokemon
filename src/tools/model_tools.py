@@ -78,7 +78,6 @@ def inference_one(model, images=None, loader=None):
             model.eval()
             model.freeze()
             logits = model.forward_one(x1)
-            model.cpu()
             yield x1.cpu(), label, logits.cpu()
 
 
@@ -102,14 +101,15 @@ def get_k_similar_group(model, images=None, loader=None, k=1):
 
 
 def get_similar_ind(k, model=None, emb=None, batch=None, images=None):
-    if emb is None:
-        emb, _ = evaluation_tool.predict_batchwise(model, batch=batch, images=images)
-    # rank the nearest neighbors for each input
-    distances = sklearn.metrics.pairwise.pairwise_distances(emb)
-    # get nearest points
-    indices = np.argsort(distances, axis=1)[:, 1: k + 1]
+    with torch.no_grad():
+        if emb is None:
+            emb, _ = evaluation_tool.predict_batchwise(model, batch=batch, images=images)
+        # rank the nearest neighbors for each input
+        distances = sklearn.metrics.pairwise.pairwise_distances(emb)
+        # get nearest points
+        indices = np.argsort(distances, axis=1)[:, 1: k + 1]
 
-    return indices, distances
+        return indices, distances
 
 def get_labeled_and_unlabeled_points(labels, num_points_per_class, num_classes=100):
     labs, L, U = [], [], []

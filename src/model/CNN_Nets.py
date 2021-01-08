@@ -43,13 +43,10 @@ class BnInception(nn.Module):
         self.input_size = 224
         self.output_size = num_classes
 
-        if finetune:
-            self.model = bn_inception(pretrained=True, nb_classes=num_classes)
-        else:
-            self.model = bn_inception(pretrained=True, nb_classes=num_classes)
-            self.model.last_linear = nn.Linear(1024, num_classes)
-            if weights_path is not None:
-                self.model.load_state_dict(torch.load(weights_path))
+        self.model = bn_inception(pretrained=True)
+        self.model.last_linear = nn.Linear(1024, num_classes)
+        if not finetune and weights_path is not None:
+            self.model.load_state_dict(torch.load(weights_path))
 
     def forward(self, x):
         return self.model(x)
