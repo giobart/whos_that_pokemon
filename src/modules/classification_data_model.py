@@ -17,10 +17,9 @@ class DATASETS(Enum):
     CELEBA = 1,
     LFW = 2,
 
-# class CelebA_DataModule(pl.LightningDataModule):
 class Classification_Model(pl.LightningDataModule):
     def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32, splitting_points=(0.10, 0.10),
-                 num_workers=4, manual_split=False, valid_dataset=None, test_dataset=None, input_shape=(3, 218, 178),
+                 num_workers=4, manual_split=False, valid_dataset=None, input_shape=(3, 218, 178),
                  num_classes_iter=8, finetune=False, in_folders=False):
         """
         Args:
@@ -39,7 +38,6 @@ class Classification_Model(pl.LightningDataModule):
         self.num_workers = num_workers
         self.train_dataset = None
         self.val_dataset = valid_dataset
-        self.test_dataset = test_dataset
         self.manual_split = manual_split
         self.input_shape = input_shape
         self.num_classes_iter = num_classes_iter
@@ -71,12 +69,13 @@ class Classification_Model(pl.LightningDataModule):
         if self.class_split:
             nb_classes_train_val = int(self.nb_classes * (train+valid))
             nb_classes_test = int(self.nb_classes * test)
+            self.nb_classes_test = nb_classes_test
 
             total = sum([nb_classes_train_val, nb_classes_test])
             diff = abs(self.nb_classes - total)
 
             if diff != 0:
-                nb_classes_test += diff
+                nb_classes_train_val += diff
 
             total = sum([nb_classes_train_val, nb_classes_test])
             diff = abs(self.nb_classes - total)
@@ -87,20 +86,23 @@ class Classification_Model(pl.LightningDataModule):
             print('train classes', start, end)
 
             self.train_val_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
+            self.train_val_dataset.set_transform(transform)
 
             n_samples = len(self.train_val_dataset)
             val_size = int(n_samples * valid)
             split_size = [n_samples - val_size, val_size]
 
-            start, end = end, end+nb_classes_test
-            print('test classes', start, end)
-            self.test_dataset = ClassificationDataset(labels_map, num_classes=list(range(start, end)))
-
-            for i_dataset in [self.train_val_dataset, self.test_dataset]:
-                i_dataset.set_transform(transform)
-
             self.train_dataset, self.val_dataset = random_split(self.train_val_dataset, split_size)
-            print('split size', len(self.train_dataset), len(self.val_dataset), len(self.test_dataset))
+
+            self.test_dataset = None
+            if nb_classes_test > 0:
+                start, end = end, end+nb_classes_test
+                print('test classes', start, end)
+                self.test_dataset = ClassificationDataset(labels_map, num_classes=list(range(start, end)))
+                self.test_dataset.set_transform(transform)
+                print('split size', len(self.train_dataset), len(self.val_dataset), len(self.test_dataset))
+            else:
+                print('split size', len(self.train_dataset), len(self.val_dataset))
 
         elif not self.manual_split:
             # define split point
@@ -117,10 +119,6 @@ class Classification_Model(pl.LightningDataModule):
             self.train_dataset.set_transform(transform)
             self.val_dataset.set_transform(transform)
             self.test_dataset.set_transform(transform)
-
-        # self.train_list_of_indices_for_each_class = get_list_of_indices(self.train_dataset)
-        # self.val_list_of_indices_for_each_class = get_list_of_indices(self.val_dataset)
-        # self.test_list_of_indices_for_each_class = get_list_of_indices(self.test_dataset)
 
 
     # return the dataloader for each split
@@ -159,6 +157,8 @@ class Classification_Model(pl.LightningDataModule):
                                            )
 
     def test_dataloader(self):
+        if self.nb_classes_test == 0:
+            return None
 
         sampler = None
         if not self.finetune:
@@ -175,8 +175,6 @@ class Classification_Model(pl.LightningDataModule):
                                            collate_fn=None
                                            )
 
-
-# class CelebADataset(Dataset):
 class ClassificationDataset(Dataset):
     """ Face dataset. """
 
