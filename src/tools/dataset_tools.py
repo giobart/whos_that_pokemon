@@ -228,12 +228,14 @@ def save_images_in_folders(config=None):
 
 def get_list_of_indices(dataset):
     ddict = defaultdict(list)
-    for idx, (_, label) in enumerate(dataset):
+    for idx, label in enumerate(dataset.ys):
         ddict[label].append(idx)
 
-    list_of_indices_for_each_class = []
-    for key in ddict:
-        list_of_indices_for_each_class.append(ddict[key])
+    # list_of_indices_for_each_class = [ddict[key] for key in ddict]
+
+    list_of_indices_for_each_class = list(ddict.values())
+    # for key in ddict:
+    #     list_of_indices_for_each_class.append(ddict[key])
 
     return list_of_indices_for_each_class
 

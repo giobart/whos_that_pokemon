@@ -8,15 +8,15 @@ from src.modules.classification_data_model import Classification_Model, DATASETS
 def objective(trial):
     model = define_model(trial)
 
-    num_classes_iter = 8
-    num_elem_class = 6
+    num_classes_iter = 24
+    num_elem_class = 2
     batch_size = num_classes_iter * num_elem_class
     dataloader = Classification_Model(name=DATASETS.CELEBA,
                                    nb_classes=model.nb_classes,
                                    class_split=True,
                                    batch_size=batch_size,
                                    num_classes_iter=num_classes_iter,
-                                   splitting_points=(0.20, 0.20),
+                                   splitting_points=(0.20, 0),
                                    input_shape=(3, model.input_size, model.input_size),
                                    num_workers=mp.cpu_count(),
                                    finetune=False)

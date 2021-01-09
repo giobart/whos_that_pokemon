@@ -18,7 +18,7 @@ class CNN_MODEL_GROUP(Enum):
 
 class Siamese_Group(pl.LightningModule):
     def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL_GROUP.BN_INCEPTION, freeze_layers=False,
-                 nb_classes=10177, finetune=False, weights_path=None):
+                 nb_classes=10177, finetune=False, weights_path=None, cnn_state_dict=None):
 
         super().__init__()
         self.hparams = hparams
@@ -50,7 +50,11 @@ class Siamese_Group(pl.LightningModule):
             self.cnn_output_size = self.conv.output_size
 
         elif cnn_model == CNN_MODEL_GROUP.BN_INCEPTION:
-            self.model = BnInception(num_classes=self.nb_classes, finetune=self.finetune, weights_path=weights_path)
+            self.model = BnInception(num_classes=self.nb_classes, finetune=self.finetune, weights_path=weights_path,
+                                     cnn_state_dict=cnn_state_dict)
+
+            if not finetune and (weights_path is not None or cnn_state_dict is not None):
+                self.model.load_state_dict(cnn_state_dict)
             self.input_size = self.model.input_size
 
         else:

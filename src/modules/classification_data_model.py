@@ -67,32 +67,44 @@ class Classification_Model(pl.LightningDataModule):
         valid, test = self.splitting_points
         train = 1 - (valid + test)
         if self.class_split:
-            nb_classes_train_val = int(self.nb_classes * (train+valid))
+            nb_classes_train = int(self.nb_classes * train)
+            nb_classes_valid = int(self.nb_classes * valid)
             nb_classes_test = int(self.nb_classes * test)
             self.nb_classes_test = nb_classes_test
 
-            total = sum([nb_classes_train_val, nb_classes_test])
+            total = nb_classes_train + nb_classes_valid + nb_classes_test
             diff = abs(self.nb_classes - total)
 
             if diff != 0:
-                nb_classes_train_val += diff
+                nb_classes_train += diff
 
-            total = sum([nb_classes_train_val, nb_classes_test])
+            total = nb_classes_train + nb_classes_valid + nb_classes_test
             diff = abs(self.nb_classes - total)
 
             assert diff == 0
-
-            start, end = 0,  nb_classes_train_val
+            # train dataset
+            start, end = 0,  nb_classes_train
             print('train classes', start, end)
 
-            self.train_val_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
-            self.train_val_dataset.set_transform(transform)
+            self.train_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
+            self.train_dataset.set_transform(transform)
 
-            n_samples = len(self.train_val_dataset)
-            val_size = int(n_samples * valid)
-            split_size = [n_samples - val_size, val_size]
 
-            self.train_dataset, self.val_dataset = random_split(self.train_val_dataset, split_size)
+
+            # valid dataset
+            start, end = nb_classes_train, nb_classes_valid
+            print('valid classes', start, end)
+
+            self.val_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
+            self.val_dataset.set_transform(transform)
+
+
+
+            # n_samples = len(self.train_dataset)
+            # val_size = int(n_samples * valid)
+            # split_size = [n_samples - val_size, val_size]
+            #
+            # self.train_dataset, self.val_dataset = random_split(self.train_val_dataset, split_size)
 
             self.test_dataset = None
             if nb_classes_test > 0:
