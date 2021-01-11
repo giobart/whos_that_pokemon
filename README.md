@@ -38,7 +38,7 @@ if the image features are already available is possible to populate the **img_fe
 ```
 {
 	"img_crop":bool,
-    "fraud_detection":bool
+    	"fraud_detection":bool
 	"img_base64":"base64 encoded image"
 }
 ``` 
