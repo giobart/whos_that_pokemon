@@ -8,36 +8,39 @@ import numpy as np
 
 
 def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None):
-
+    model.eval()
     fc7s, L = [], []
     with torch.no_grad():
-        if batch is None:
+        if batch is None and dataloader is not None:
             for batch in dataloader:
                 fc7_out, Y = inference_group(model, fc7, batch=batch)
                 fc7s.append(fc7_out)
                 L.append(Y)
+
+            return torch.cat(fc7s).squeeze(), torch.cat(L).squeeze()
         else:
             fc7, Y = inference_group(model, fc7, batch=batch, X=images)
             fc7s.append(fc7)
             L.append(Y)
-
-        fc7, Y = torch.cat(fc7s), torch.cat(L)
-        return torch.squeeze(fc7), torch.squeeze(Y)
-
+            return torch.cat(fc7s).squeeze(), Y
 
 def inference_group(model, fc7, batch=None, X=None):
+    model.eval()
+
     if X is None:
         X, Y = batch
     else:
         Y = None
 
     if fc7 is None:
-        X = X.cuda() if torch.cuda.is_available() else X
+        if torch.cuda.is_available():
+            X = X.cuda()
+            model = model.cuda()
+
         _, fc7 = model(X)
 
     # normalize the features in the unit ball
     fc7 = F.normalize(fc7, p=2, dim=1)
-
 
     if Y is None:
         return fc7.cpu(), None
@@ -45,7 +48,7 @@ def inference_group(model, fc7, batch=None, X=None):
     return fc7.cpu(), Y.cpu()
 
 
-def evaluate(model, dataloader=None, fc7=None, batch=None):
+def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False):
     nb_classes = model.nb_classes
 
     model_is_training = model.training
@@ -53,11 +56,9 @@ def evaluate(model, dataloader=None, fc7=None, batch=None):
 
     # calculate embeddings with model, also get labels
     emb, labels = predict_batchwise(model, dataloader=dataloader, fc7=fc7, batch=batch)
-    if labels.shape[0] > emb.shape[0]:
-        pass
 
     nmi = None
-    if dataloader is not None:
+    if dataloader is not None and calc_nmi:
         nmi = evaluation.calc_normalized_mutual_information(labels, evaluation.cluster_by_kmeans(emb, nb_classes))
 
     recall = []
