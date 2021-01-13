@@ -12,15 +12,17 @@ from src.tools.dataset_tools import get_labels, get_dataset_filename_map, get_li
 from enum import Enum
 import config_celeba
 import config_lfw
+import config_cfw
 
 class DATASETS(Enum):
     CELEBA = 1,
     LFW = 2,
+    CFW = 3,
 
 class Classification_Model(pl.LightningDataModule):
     def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32, splitting_points=(0.10, 0.10),
                  num_workers=4, manual_split=False, valid_dataset=None, input_shape=(3, 218, 178),
-                 num_classes_iter=8, finetune=False, in_folders=False):
+                 num_classes_iter=8, finetune=False, in_folders=True):
         """
         Args:
             dataset: LfwImagesDataset(), if manual_split==True than this is the LfwImagesPairsDataset train set
@@ -61,6 +63,8 @@ class Classification_Model(pl.LightningDataModule):
             labels_map = get_labels(config=config_celeba, in_folders=self.in_folders)
         elif self.name == DATASETS.LFW:
             labels_map = get_dataset_filename_map(config = config_lfw)
+        elif self.name == DATASETS.CFW:
+            labels_map = get_dataset_filename_map(config=config_cfw)
         else:
             raise Exception("Unknow dataset! Please choose a valid dataset name.")
 
@@ -106,6 +110,13 @@ class Classification_Model(pl.LightningDataModule):
 
         elif not self.manual_split:
             # define split point
+            if self.name == DATASETS.CFW:
+                self.dataset = ClassificationDataset(labels_map, map_to_int=True, offset_y=0,
+                                                     num_classes=list(range(self.nb_classes)))
+            else:
+                self.dataset = ClassificationDataset(labels_map, num_classes=list(range(self.nb_classes)))
+
+            print('len', len(self.dataset))
             self.dataset.set_transform(transform)
             n_samples = len(self.dataset)
             val_size = int(n_samples * valid)
@@ -157,7 +168,7 @@ class Classification_Model(pl.LightningDataModule):
                                            )
 
     def test_dataloader(self):
-        if self.nb_classes_test == 0:
+        if self.class_split and self.nb_classes_test == 0:
             return None
 
         sampler = None

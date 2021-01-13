@@ -1,14 +1,13 @@
-import torch.nn as nn
 import torch.nn.functional as F
 from src import evaluation
 import torch
 import logging
-import sys
-import numpy as np
-
+from pytorch_lightning.metrics import Metric
 
 def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None):
-    model.eval()
+    if model is not None:
+        model.eval()
+
     fc7s, L = [], []
     with torch.no_grad():
         if batch is None and dataloader is not None:
@@ -25,7 +24,8 @@ def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None)
             return torch.cat(fc7s).squeeze(), Y
 
 def inference_group(model, fc7, batch=None, X=None):
-    model.eval()
+    if model is not None:
+        model.eval()
 
     if X is None:
         X, Y = batch
@@ -74,6 +74,23 @@ def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False):
         recall.append(r_at_k)
         logging.info("R@{} : {:.3f}".format(k, 100 * r_at_k))
 
-    model.train(model_is_training)  # revert to previous training state
+    if model_is_training:
+        model.train()  # revert to previous training state
 
     return recall, nmi
+
+
+class GroupRecall(Metric):
+    def __init__(self, dist_sync_on_step=False):
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
+        self.add_state("recall", default=torch.tensor(0.0))
+        self.add_state("total", default=torch.tensor(0.0))
+
+    def update(self, fc7, batch):
+        emb, labels = predict_batchwise(None, fc7=fc7, batch=batch)
+        k_pred_labels = evaluation.assign_by_euclidian_at_k(emb, labels, 1000)
+        self.recall += torch.tensor(evaluation.calc_recall_at_k(labels, k_pred_labels, k=1))
+        self.total += 1
+
+    def compute(self):
+        return torch.tensor([self.recall.float() / self.total])

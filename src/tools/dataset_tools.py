@@ -71,9 +71,13 @@ def dataset_gdrive_download(config=config_lfw, url=None):
         else:
             gdrive_helper.download_file_from_google_drive(config.DRIVE_URL, target_filepath)
 
-        zip_file = zipfile.ZipFile(target_filepath, "r")
-        zip_file.extractall(path=config.DATASET_MAIN_FOLDER_NAME)
-        zip_file.close()
+        if target_filepath.split('.')[-1] == 'rar':
+            unrar_file(target_filepath, config.DATASET_MAIN_FOLDER_NAME)
+        else:
+            zip_file = zipfile.ZipFile(target_filepath, "r")
+            zip_file.extractall(path=config.DATASET_MAIN_FOLDER_NAME)
+            zip_file.close()
+
         os.remove(target_filepath)
 
     # get the labels txt
@@ -81,11 +85,14 @@ def dataset_gdrive_download(config=config_lfw, url=None):
         if os.path.exists(config.LABEL_TXT_PATH):
             print("Labels already downloaded")
             return
-
+        gdrive_helper.download_file_from_google_drive(config.LABEL_TXT_URL, config.LABEL_TXT_PATH)
     #         gdown.download(config.LABEL_TXT_URL, config.LABEL_TXT_PATH, quiet=False)
 
-    gdrive_helper.download_file_from_google_drive(config.LABEL_TXT_URL, config.LABEL_TXT_PATH)
 
+def unrar_file(src, dst):
+    from unrar import rarfile
+    rar = rarfile.RarFile(src)
+    rar.extractall(dst)
 
 def get_labels(config=config_lfw, in_folders=False):
     labels_map = defaultdict(list)
@@ -231,9 +238,11 @@ def get_list_of_indices(dataset):
     for idx, (_, label) in enumerate(dataset):
         ddict[label].append(idx)
 
-    list_of_indices_for_each_class = []
-    for key in ddict:
-        list_of_indices_for_each_class.append(ddict[key])
+    # list_of_indices_for_each_class = [ddict[key] for key in ddict]
+
+    list_of_indices_for_each_class = list(ddict.values())
+    # for key in ddict:
+    #     list_of_indices_for_each_class.append(ddict[key])
 
     return list_of_indices_for_each_class
 

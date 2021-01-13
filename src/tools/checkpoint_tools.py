@@ -16,6 +16,7 @@ def load_model_txt(model, path):
     i = 0
     odd = 1
     prev_key = None
+    print('loading model')
     while True:
         s = fin.readline().strip()
         if not s:
@@ -23,7 +24,6 @@ def load_model_txt(model, path):
         if odd:
             prev_key = s
         else:
-            print('Iter', i)
             val = eval(s)
             if type(val) != type([]):
                 data_dict[prev_key] = torch.FloatTensor([eval(s)])[0]
