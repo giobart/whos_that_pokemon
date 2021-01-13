@@ -22,6 +22,12 @@ def get_group_hparam(cnn_model):
             'temperature': 12,
             'num_labeled_points_class': 2
         }
+        # return {
+        #     "lr": 1.983336560585572e-05,
+        #     "weight_decay": 6.552562858706108e-08,
+        #     'temperature': 20,
+        #     'num_labeled_points_class': 2,
+        # }
     else:
         raise Exception("cnn_model is not defined correctly")
 
@@ -33,6 +39,19 @@ def get_group_scheduler_param(cnn_model):
             "gamma": 0.5,
         }
     elif cnn_model == CNN_MODEL_GROUP.BN_INCEPTION:
+        return {
+            "step_size": 10,
+            "gamma": 0.5,
+        }
+
+def get_cfw_hparam():
+        return {
+            "lr": 0.0001,
+            "weight_decay": 8.465428e-5,
+        }
+
+
+def get_cfw_scheduler_param():
         return {
             "step_size": 10,
             "gamma": 0.5,

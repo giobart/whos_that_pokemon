@@ -12,15 +12,17 @@ from src.tools.dataset_tools import get_labels, get_dataset_filename_map, get_li
 from enum import Enum
 import config_celeba
 import config_lfw
+import config_cfw
 
 class DATASETS(Enum):
     CELEBA = 1,
     LFW = 2,
+    CFW = 3,
 
 class Classification_Model(pl.LightningDataModule):
     def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32, splitting_points=(0.10, 0.10),
                  num_workers=4, manual_split=False, valid_dataset=None, input_shape=(3, 218, 178),
-                 num_classes_iter=8, finetune=False, in_folders=False):
+                 num_classes_iter=8, finetune=False, in_folders=True):
         """
         Args:
             dataset: LfwImagesDataset(), if manual_split==True than this is the LfwImagesPairsDataset train set
@@ -61,50 +63,40 @@ class Classification_Model(pl.LightningDataModule):
             labels_map = get_labels(config=config_celeba, in_folders=self.in_folders)
         elif self.name == DATASETS.LFW:
             labels_map = get_dataset_filename_map(config = config_lfw)
+        elif self.name == DATASETS.CFW:
+            labels_map = get_dataset_filename_map(config=config_cfw)
         else:
             raise Exception("Unknow dataset! Please choose a valid dataset name.")
 
         valid, test = self.splitting_points
         train = 1 - (valid + test)
         if self.class_split:
-            nb_classes_train = int(self.nb_classes * train)
-            nb_classes_valid = int(self.nb_classes * valid)
+            nb_classes_train_val = int(self.nb_classes * (train+valid))
             nb_classes_test = int(self.nb_classes * test)
             self.nb_classes_test = nb_classes_test
 
-            total = nb_classes_train + nb_classes_valid + nb_classes_test
+            total = sum([nb_classes_train_val, nb_classes_test])
             diff = abs(self.nb_classes - total)
 
             if diff != 0:
-                nb_classes_train += diff
+                nb_classes_train_val += diff
 
-            total = nb_classes_train + nb_classes_valid + nb_classes_test
+            total = sum([nb_classes_train_val, nb_classes_test])
             diff = abs(self.nb_classes - total)
 
             assert diff == 0
-            # train dataset
-            start, end = 0,  nb_classes_train
+
+            start, end = 0,  nb_classes_train_val
             print('train classes', start, end)
 
-            self.train_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
-            self.train_dataset.set_transform(transform)
+            self.train_val_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
+            self.train_val_dataset.set_transform(transform)
 
+            n_samples = len(self.train_val_dataset)
+            val_size = int(n_samples * valid)
+            split_size = [n_samples - val_size, val_size]
 
-
-            # valid dataset
-            start, end = nb_classes_train, nb_classes_valid
-            print('valid classes', start, end)
-
-            self.val_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
-            self.val_dataset.set_transform(transform)
-
-
-
-            # n_samples = len(self.train_dataset)
-            # val_size = int(n_samples * valid)
-            # split_size = [n_samples - val_size, val_size]
-            #
-            # self.train_dataset, self.val_dataset = random_split(self.train_val_dataset, split_size)
+            self.train_dataset, self.val_dataset = random_split(self.train_val_dataset, split_size)
 
             self.test_dataset = None
             if nb_classes_test > 0:
@@ -118,6 +110,13 @@ class Classification_Model(pl.LightningDataModule):
 
         elif not self.manual_split:
             # define split point
+            if self.name == DATASETS.CFW:
+                self.dataset = ClassificationDataset(labels_map, map_to_int=True, offset_y=0,
+                                                     num_classes=list(range(self.nb_classes)))
+            else:
+                self.dataset = ClassificationDataset(labels_map, num_classes=list(range(self.nb_classes)))
+
+            print('len', len(self.dataset))
             self.dataset.set_transform(transform)
             n_samples = len(self.dataset)
             val_size = int(n_samples * valid)
@@ -169,7 +168,7 @@ class Classification_Model(pl.LightningDataModule):
                                            )
 
     def test_dataloader(self):
-        if self.nb_classes_test == 0:
+        if self.class_split and self.nb_classes_test == 0:
             return None
 
         sampler = None

@@ -2,23 +2,23 @@ import torch
 from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
-from src.tools.model_tools import ContrastiveLoss, get_labeled_and_unlabeled_points
+from src.tools.model_tools import get_labeled_and_unlabeled_points
 from src.model.GeneralLayers import FCN_layer
 from src.model.CNN_Nets import myCNN, BnInception
 from enum import Enum
-from pytorch_lightning.metrics.functional import accuracy
 from torch.optim.lr_scheduler import StepLR
 from src.tools import gtg
 import sys
 from src.tools import evaluation_tool
+from src.tools.evaluation_tool import GroupRecall
 
 class CNN_MODEL_GROUP(Enum):
     MyCNN = 1
     BN_INCEPTION = 2
 
 class Siamese_Group(pl.LightningModule):
-    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL_GROUP.BN_INCEPTION, freeze_layers=False,
-                 nb_classes=10177, finetune=False, weights_path=None, cnn_state_dict=None):
+    def __init__(self, hparams={}, scheduler_params={}, cnn_model=CNN_MODEL_GROUP.BN_INCEPTION, freeze_layers=False,
+                 nb_classes=10177, finetune=False, weights_path=None, cnn_state_dict=None, calc_train_stats=False):
 
         super().__init__()
         self.hparams = hparams
@@ -28,11 +28,11 @@ class Siamese_Group(pl.LightningModule):
         self.criterion = nn.NLLLoss()
         self.criterion2 = nn.CrossEntropyLoss()
         self.scaling_loss = 1.0
-        self.temperature = hparams['temperature']
-        self.num_labeled_points_class = hparams['num_labeled_points_class']
         self.nb_classes = nb_classes
         self.cnn_model = cnn_model
         self.finetune = finetune
+        self.recall_metric = GroupRecall()
+        self.calc_train_stats = calc_train_stats
 
         # CNN
         if cnn_model == CNN_MODEL_GROUP.MyCNN:
@@ -64,13 +64,14 @@ class Siamese_Group(pl.LightningModule):
 
     def _show_params_to_update(self):
         self.params_to_update = []
-        print("Layers to update")
         if self.freeze_layers:
+            print("Layers to update")
             for name, param in self.named_parameters():
                 if param.requires_grad:
                     self.params_to_update.append(param)
                     print("\t", name)
         else:
+            print('no layers freezed')
             self.params_to_update = self.parameters()
 
     def forward_one(self, x):
@@ -103,17 +104,22 @@ class Siamese_Group(pl.LightningModule):
             return optimizer
 
     def calc_recall(self, batch, fc):
-        recall, _ = evaluation_tool.evaluate(self, fc7=fc, batch=batch)
-        return torch.tensor(recall)
+        is_training = self.model.training
+        recall = self.recall_metric(fc, batch)
+        # recall, _ = evaluation_tool.evaluate(self, fc7=fc, batch=batch)
+        if is_training:
+            self.train()
+        # return torch.tensor(recall)
+        return recall
 
-    def general_step(self, batch):
+    def general_step(self, batch, mode):
         x, y = batch
         logits, fc = self(x)
         labs, L, U = get_labeled_and_unlabeled_points(labels=y,
-                                                       num_points_per_class=self.num_labeled_points_class,
+                                                       num_points_per_class=self.hparams['num_labeled_points_class'],
                                                        num_classes=self.nb_classes)
 
-        probs_for_gtg = F.softmax(logits / self.temperature, dim=-1)
+        probs_for_gtg = F.softmax(logits / self.hparams['temperature'], dim=-1)
 
         # do GTG (iterative process)
         probs_for_gtg, W = self.gtg(fc, fc.shape[0], labs, L, U, probs_for_gtg)
@@ -123,8 +129,10 @@ class Siamese_Group(pl.LightningModule):
         ce = self.criterion2(logits, y)
         loss = self.scaling_loss * nll + ce
         self.test_loss_nan(loss)
+        recall = torch.tensor([0])
+        if mode == 'val' or (mode == 'train' and self.calc_train_stats):
+            recall = self.calc_recall(batch, fc)
 
-        recall = self.calc_recall(batch, fc)
         return loss, nll, ce, recall
 
     def general_step_finetune(self, batch):
@@ -152,7 +160,7 @@ class Siamese_Group(pl.LightningModule):
                 'loss': loss,
             }
         else:
-            loss, nll, ce, recall = self.general_step(train_batch)
+            loss, nll, ce, recall = self.general_step(train_batch, mode='train')
             return {
                 'loss': loss,
                 'recall': recall,
@@ -168,7 +176,7 @@ class Siamese_Group(pl.LightningModule):
                 'loss': loss,
             }
         else:
-            loss, nll, ce, recall = self.general_step(val_batch)
+            loss, nll, ce, recall = self.general_step(val_batch, mode='val')
             return {
                 'loss': loss,
                 'recall': recall,
@@ -186,12 +194,13 @@ class Siamese_Group(pl.LightningModule):
         avg_nll = torch.stack([x['nll'] for x in outputs]).mean()
         avg_ce = torch.stack([x['ce'] for x in outputs]).mean()
 
-        avg_recall = torch.stack([x['recall'] for x in outputs]).mean(dim=0)
 
         self.log(f'{mode}_loss', avg_loss, logger=logger)
         self.log(f'{mode}_nll_loss', avg_nll, logger=logger)
         self.log(f'{mode}_ce_loss', avg_ce, logger=logger)
 
+
+        avg_recall = torch.stack([x['recall'] for x in outputs]).mean(dim=0)
         which_nearest_neighbors = [1]
         for i, k in enumerate(which_nearest_neighbors):
             self.log(f'{mode}_R%_@{k}', 100 * avg_recall[i], logger=logger)
@@ -225,7 +234,9 @@ class Siamese_Group(pl.LightningModule):
                 'avg_loss': avg_loss.cpu(),
             }
         else:
+            print('running test')
             avg_loss, avg_recall, avg_nll, avg_ce = self.general_epoch_end(outputs, 'test')
+
             return {
                 'avg_loss': avg_loss.cpu(),
                 'avg_recall@1': avg_recall[0].cpu(),

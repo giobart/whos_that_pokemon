@@ -1,5 +1,4 @@
 from os import path
-# TODO: create a global config file and add this to it
 
 # DATASET_URL = ""
 DATASET_MAIN_FOLDER_NAME = path.join(".", "data", "dataset")

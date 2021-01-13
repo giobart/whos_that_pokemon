@@ -39,12 +39,12 @@ class InceptionRNV1(nn.Module):
         return self.model(x)
 
 class BnInception(nn.Module):
-    def __init__(self, num_classes=1000, finetune=False, weights_path: str = None, cnn_state_dict=None):
+    def __init__(self, num_classes=1000, pretrained=True, finetune=False, weights_path: str = None, cnn_state_dict=None):
         super().__init__()
         self.input_size = 224
         self.output_size = num_classes
 
-        self.model = bn_inception(pretrained=True)
+        self.model = bn_inception(pretrained=pretrained)
         self.model.last_linear = nn.Linear(1024, num_classes)
         # if not finetune and (weights_path is not None or cnn_state_dict is not None):
         #     self.model.load_state_dict(cnn_state_dict)

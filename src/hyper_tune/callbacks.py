@@ -17,10 +17,10 @@ class MetricsCallback(Callback):
 def get_callbacks(trial):
     metrics_callback = MetricsCallback()
     early_stop_callback = pl.callbacks.EarlyStopping(
-        monitor='val_loss',
+        monitor='val_R%_@1',
         patience=5,
-        strict=False,
+        strict=True,
         verbose=False,
-        mode='min'
+        mode='max'
     )
     return [metrics_callback, early_stop_callback, PyTorchLightningPruningCallback(trial, monitor="val_R%_@1")]

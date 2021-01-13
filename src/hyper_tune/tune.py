@@ -28,7 +28,7 @@ def objective(trial):
         "check_val_every_n_epoch": 1,
         "callbacks": calls,
         "fast_dev_run": False,
-        "max_epochs": 5,
+        "max_epochs": 3,
         "gpus": 1 if torch.cuda.is_available() else None,
 
     }
