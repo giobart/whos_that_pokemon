@@ -3,6 +3,8 @@ from facenet_pytorch import MTCNN
 import numpy as np
 from PIL import Image
 import math
+from imgaug import augmenters as iaa
+
 
 ALPHA_SHIFT = 10
 LEFT_EYE_POS = lambda w, h: (w / 3 + ALPHA_SHIFT, h / 3 + ALPHA_SHIFT)
@@ -102,3 +104,23 @@ class FaceAlignTransform(object):
 
     def __call__(self, img):
         return image_deep_alignment(img, self.transform_kind)
+
+class ToNumpy(object):
+    """
+    Align the face
+    """
+
+    def __init__(self):
+        pass
+
+    def __call__(self, img):
+        return np.array(img)
+
+class ImageAugmentation:
+    @staticmethod
+    def getImageAug(image_aug_p):
+        return iaa.Sequential([
+            iaa.Sometimes(image_aug_p, iaa.GaussianBlur(sigma=(0, 1.0))),
+            iaa.Sometimes(image_aug_p, iaa.Fliplr(0.5)),
+            iaa.Sometimes(image_aug_p, iaa.AddToBrightness((-30, 30))),
+        ])

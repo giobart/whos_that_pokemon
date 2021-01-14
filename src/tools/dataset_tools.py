@@ -9,9 +9,10 @@ import zipfile
 import shutil
 from collections import defaultdict
 from torchvision import transforms
-from src.tools.image_preprocess import FaceAlignTransform
+from src.tools.image_preprocess import FaceAlignTransform, ImageAugmentation, ToNumpy
 import urllib
 from tqdm import tqdm
+
 
 # TARGET_FOLDER = path.join(".", config.DATASET_FOLDER_IMG)
 FOLDER_LIST = []
@@ -246,17 +247,34 @@ def get_list_of_indices(dataset):
 
     return list_of_indices_for_each_class
 
-
-def get_transforms(input_shape, mode='train'):
-    if mode == 'train' or mode == 'val' or mode == 'test':
+def get_transforms(input_shape, mode='train', image_aug_p=0):
+    if mode == 'train':
+        if image_aug_p > 0:
+            print('Augment Image', mode)
+            return transforms.Compose([
+                transforms.Resize((input_shape[1], input_shape[2])),
+                # ToNumpy(),
+                # ImageAugmentation.getImageAug(image_aug_p).augment_image,
+                transforms.ToTensor(),
+            ])
+        else:
+            print('Images not Augmented', mode)
+            return transforms.Compose([
+                transforms.Resize((input_shape[1], input_shape[2])),
+                transforms.ToTensor(),
+            ])
+    elif mode == 'val' or mode == 'test':
+        print('Images not Augmented', mode)
         return transforms.Compose([
             transforms.Resize((input_shape[1], input_shape[2])),
             transforms.ToTensor(),
+
         ])
     elif mode == 'inference':
+        print('Images not Augmented', mode)
         return transforms.Compose([
-            FaceAlignTransform(FaceAlignTransform.ROTATION),
             transforms.Resize((input_shape[1], input_shape[2])),
+            FaceAlignTransform(FaceAlignTransform.ROTATION),
             transforms.ToTensor(),
 
         ])
