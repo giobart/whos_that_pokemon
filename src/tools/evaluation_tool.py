@@ -5,6 +5,16 @@ import logging
 from pytorch_lightning.metrics import Metric
 
 def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None, nb_batches=0):
+    """
+    :param model: Model used for the prediction
+    :param dataloader: batch is None, uses the dataloader for the prediction
+    :param fc7: model output before the classifcation layer. If not None, the model will not be used.
+    :param batch: if not None, the batch will be used instead of the dataloader
+    :param images: images as pytorch tensor. If provided they will be used as input of the model instead of the images
+                    in the batch. Useful when inferencing and a batch is not available
+    :param nb_batches: if >0 and dataloader is not None, limit the number of batches to be processed from the dataloader
+    :return: Tuple of concatenated outputs and labels. If images are provided then labels returned will be None.
+    """
     if model is not None:
         model.eval()
 
@@ -27,6 +37,15 @@ def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None,
             return torch.cat(fc7s).squeeze(), Y
 
 def inference_group(model, fc7, batch=None, X=None):
+    """
+
+    :param model: Model used for the prediction
+    :param fc7: model output before the classifcation layer. If not None, the model will not be used.
+    :param batch: if not None, the batch will be used instead of the dataloader
+    :param X: images as pytorch tensor. If provided they will be used as input of the model instead of the images
+                    in the batch. Useful when inferencing and a batch is not available
+    :return: Tuple of outputs and labels. If X is not None then labels returned will be None.
+    """
     if model is not None:
         model.eval()
 
@@ -52,6 +71,16 @@ def inference_group(model, fc7, batch=None, X=None):
 
 
 def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False, nb_batches=0):
+    """
+
+    :param model: Model used for the prediction
+    :param dataloader: batch is None, uses the dataloader for the prediction
+    :param fc7: model output before the classifcation layer. If not None, the model will not be used.
+    :param batch: if not None, the batch will be used instead of the dataloader
+    :param calc_nmi: whether to compute nmi or not
+    :param nb_batches: if >0 and dataloader is not None, limit the number of batches to be processed from the dataloader
+    :return: tuple containing a list of recall@1, 10, and 20, and nmi value if calc_nmi is True, else None.
+    """
     nb_classes = model.nb_classes
 
     model_is_training = model.training
@@ -84,6 +113,7 @@ def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False, nb_ba
 
 
 class GroupRecall(Metric):
+    """Recall implementation as pytorch Metric"""
     def __init__(self, dist_sync_on_step=False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.add_state("recall", default=torch.tensor(0.0))

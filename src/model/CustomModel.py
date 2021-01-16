@@ -15,7 +15,18 @@ class CNN_MODEL(Enum):
     InceptionResnetV1 = 2
 
 class Siamese(pl.LightningModule):
+    """
+    Siamese Network using either CE Loss or Contrastive Loss.
+    """
     def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL.MyCNN, freeze_layers=True):
+        """
+
+        :param hparams: optimizer parameters
+        :param scheduler_params: scheduler parameters
+        :param cnn_model: which cnn model to use. CNN_Model.MyCNN or CNN_Model.InceptionResnetV1
+        :param freeze_layers: whether to freeze the conv layers when using CNN_Model.InceptionResnetV1 since it is
+        pretrained on vggface2
+        """
         super().__init__()
         self.hparams = hparams
         self.loss_fn = hparams['loss_fn']

@@ -17,74 +17,42 @@ class CNN_MODEL_GROUP(Enum):
     BN_INCEPTION = 2
 
 class Siamese_Group(pl.LightningModule):
-    def __init__(self, hparams={}, scheduler_params={}, cnn_model=CNN_MODEL_GROUP.BN_INCEPTION, freeze_layers=False,
-                 nb_classes=10177, finetune=False, weights_path=None, cnn_state_dict=None, calc_train_stats=False):
-
+    """This is not really a Siamese Network but can be considered as a generalization of it. It trains BnInception Model
+    with the Group Loss."""
+    def __init__(self, hparams={}, scheduler_params={}, nb_classes=10177, finetune=False,
+                 cnn_state_dict=None, calc_train_stats=False):
+        """
+        :param hparams: Optimizer parameters
+        :param scheduler_params: Scheduler parameters
+        :param nb_classes: Number of classes to train on
+        :param finetune: whether to finetune the model (train on classification task) or to train using the group loss
+        :param cnn_state_dict: used to init the model weights
+        :param calc_train_stats: whether to calc stats during training
+        """
         super().__init__()
         self.hparams = hparams
         self.scheduler_params = scheduler_params
-        self.freeze_layers = freeze_layers
         self.gtg = gtg.GTG(nb_classes, max_iter=1, device='cuda')
         self.criterion = nn.NLLLoss()
         self.criterion2 = nn.CrossEntropyLoss()
         self.scaling_loss = 1.0
         self.nb_classes = nb_classes
-        self.cnn_model = cnn_model
         self.finetune = finetune
         self.recall_metric = GroupRecall()
         self.calc_train_stats = calc_train_stats
 
-        # CNN
-        if cnn_model == CNN_MODEL_GROUP.MyCNN:
-            self.conv = myCNN(nn.PReLU,
-                              hparams["filter_size"],
-                              hparams["filter_channels"],
-                              padding=int(hparams["filter_size"] / 2),
-                              )  # size/8 x 4*channels
-            self.linear = nn.Sequential(
-                FCN_layer(self.cnn_output_size, hparams['n_hidden1'], dropout=hparams['dropout']),
-                FCN_layer(hparams['n_hidden1'], hparams['n_hidden2']),
-            )
-            self.classifier = nn.Linear(hparams['n_hidden2'], nb_classes)
-            self.input_size = self.conv.input_size
-            self.cnn_output_size = self.conv.output_size
 
-        elif cnn_model == CNN_MODEL_GROUP.BN_INCEPTION:
-            self.model = BnInception(num_classes=self.nb_classes, finetune=self.finetune, weights_path=weights_path,
-                                     cnn_state_dict=cnn_state_dict)
+        self.model = BnInception(num_classes=self.nb_classes)
 
-            if not finetune and (weights_path is not None or cnn_state_dict is not None):
-                self.model.load_state_dict(cnn_state_dict)
-            self.input_size = self.model.input_size
+        if not finetune and cnn_state_dict is not None:
+            self.model.load_state_dict(cnn_state_dict)
 
-        else:
-            raise Exception("cnn_model is not defined correctly")
-
-        self._show_params_to_update()
-
-    def _show_params_to_update(self):
-        self.params_to_update = []
-        if self.freeze_layers:
-            print("Layers to update")
-            for name, param in self.named_parameters():
-                if param.requires_grad:
-                    self.params_to_update.append(param)
-                    print("\t", name)
-        else:
-            print('no layers freezed')
-            self.params_to_update = self.parameters()
+        self.input_size = self.model.input_size
+        self.params_to_update = self.parameters()
 
     def forward_one(self, x):
-        if self.cnn_model == CNN_MODEL_GROUP.MyCNN:
-            x = self.conv(x)
-            x = x.view(x.size()[0], -1).squeeze()
-            fc = self.linear(x)
-            x = self.classifier(fc)
-            return x, fc
-
-        else:
-            x, fc = self.model(x)
-            return x, fc
+        x, fc = self.model(x)
+        return x, fc
 
     def forward(self, x):
         x, fc = self.forward_one(x)
