@@ -4,17 +4,20 @@ import torch
 import logging
 from pytorch_lightning.metrics import Metric
 
-def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None):
+def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None, nb_batches=0):
     if model is not None:
         model.eval()
 
     fc7s, L = [], []
     with torch.no_grad():
         if batch is None and dataloader is not None:
-            for batch in dataloader:
+            for i, batch in enumerate(dataloader):
                 fc7_out, Y = inference_group(model, fc7, batch=batch)
                 fc7s.append(fc7_out)
                 L.append(Y)
+                if nb_batches>0:
+                    if i>nb_batches:
+                        break
 
             return torch.cat(fc7s).squeeze(), torch.cat(L).squeeze()
         else:
@@ -48,14 +51,14 @@ def inference_group(model, fc7, batch=None, X=None):
     return fc7.cpu(), Y.cpu()
 
 
-def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False):
+def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False, nb_batches=0):
     nb_classes = model.nb_classes
 
     model_is_training = model.training
     model.eval()
 
     # calculate embeddings with model, also get labels
-    emb, labels = predict_batchwise(model, dataloader=dataloader, fc7=fc7, batch=batch)
+    emb, labels = predict_batchwise(model, dataloader=dataloader, fc7=fc7, batch=batch, nb_batches=nb_batches)
 
     nmi = None
     if dataloader is not None and calc_nmi:
@@ -63,9 +66,9 @@ def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False):
 
     recall = []
     # rank the nearest neighbors for each input
-    k_pred_labels = evaluation.assign_by_euclidian_at_k(emb, labels, 1000)
+    k_pred_labels = evaluation.assign_by_euclidian_at_k(emb, labels, 20)
     if batch is None:
-        which_nearest_neighbors = [1, 10, 100, 1000]
+        which_nearest_neighbors = [1, 10, 20]
     else:
         which_nearest_neighbors = [1]
 

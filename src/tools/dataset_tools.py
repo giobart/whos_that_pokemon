@@ -247,28 +247,41 @@ def get_list_of_indices(dataset):
 
     return list_of_indices_for_each_class
 
-def get_transforms(input_shape, mode='train', image_aug_p=0):
-    if mode == 'train':
-        if image_aug_p > 0:
-            print('Augment Image', mode)
-            return transforms.Compose([
-                transforms.Resize((input_shape[1], input_shape[2])),
-                # ToNumpy(),
-                # ImageAugmentation.getImageAug(image_aug_p).augment_image,
-                transforms.ToTensor(),
-            ])
-        else:
-            print('Images not Augmented', mode)
-            return transforms.Compose([
-                transforms.Resize((input_shape[1], input_shape[2])),
-                transforms.ToTensor(),
-            ])
-    elif mode == 'val' or mode == 'test':
-        print('Images not Augmented', mode)
-        return transforms.Compose([
-            transforms.Resize((input_shape[1], input_shape[2])),
-            transforms.ToTensor(),
 
+# def get_transforms(input_shape, mode='train'):
+#     if mode == 'train' or mode == 'val' or mode == 'test':
+#         return transforms.Compose([
+#             transforms.Resize((input_shape[1], input_shape[2])),
+#             transforms.ToTensor(),
+#         ])
+#     elif mode == 'inference':
+#         return transforms.Compose([
+#             FaceAlignTransform(FaceAlignTransform.ROTATION),
+#             transforms.Resize((input_shape[1], input_shape[2])),
+#             transforms.ToTensor(),
+#
+#         ])
+
+def get_pre_transforms(input_shape):
+    return transforms.Compose([
+        transforms.Resize((input_shape[1], input_shape[2])),
+    ])
+
+def get_augmentations():
+    return transforms.Compose([
+                ToNumpy(),
+                ImageAugmentation.getImageAug().augment_image,
+            ])
+
+def get_transforms(input_shape, mode='train'):
+    if mode == 'train':
+        return transforms.Compose([
+            transforms.ToTensor(),
+        ])
+    elif mode == 'val' or mode == 'test':
+        return transforms.Compose([
+            get_pre_transforms(input_shape),
+            transforms.ToTensor(),
         ])
     elif mode == 'inference':
         print('Images not Augmented', mode)

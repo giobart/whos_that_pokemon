@@ -118,9 +118,9 @@ class ToNumpy(object):
 
 class ImageAugmentation:
     @staticmethod
-    def getImageAug(image_aug_p):
+    def getImageAug():
         return iaa.Sequential([
-            iaa.Sometimes(image_aug_p, iaa.GaussianBlur(sigma=(0, 1.0))),
-            iaa.Sometimes(image_aug_p, iaa.Fliplr(0.5)),
-            iaa.Sometimes(image_aug_p, iaa.AddToBrightness((-30, 30))),
+            iaa.GaussianBlur(sigma=(0, 1.0)),
+            iaa.Fliplr(0.5),
+            iaa.AddToBrightness((-30, 30)),
         ])
