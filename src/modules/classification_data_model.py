@@ -7,31 +7,25 @@ from PIL import Image
 import numpy as np
 from torch.utils.data import random_split
 from src.tools.combine_sampler import CombineSampler
-from collections import defaultdict
-from src.tools.dataset_tools import get_labels, get_dataset_filename_map, get_list_of_indices, get_transforms
+from src.tools.dataset_tools import get_labels, get_dataset_filename_map, get_list_of_indices, get_transforms, get_augmentations, get_pre_transforms
 from enum import Enum
 import config_celeba
 import config_lfw
 import config_cfw
+
 
 class DATASETS(Enum):
     CELEBA = 1,
     LFW = 2,
     CFW = 3,
 
+
 class Classification_Model(pl.LightningDataModule):
-    def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32, splitting_points=(0.10, 0.10),
+    def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32,
+                 splitting_points=(0.10, 0.10),
                  num_workers=4, manual_split=False, valid_dataset=None, input_shape=(3, 218, 178),
-                 num_classes_iter=8, finetune=False, in_folders=True):
-        """
-        Args:
-            dataset: LfwImagesDataset(), if manual_split==True than this is the LfwImagesPairsDataset train set
-            batch_size: default value: 32
-            splitting_points:   splitting point % for train, test and validation.
-                                default (0.6,0.85) -> 60% train, 25% validation, 15% test
-            valid_dataset: if manual_split==True this must be the validation LfwImagesPairsDataset
-            manual_split: if manual_split==True this must be the test LfwImagesPairsDataset
-        """
+                 num_classes_iter=8, finetune=False, in_folders=True, image_aug_p=0):
+
         super().__init__()
         self.batch_size = batch_size
         self.splitrate = 0.2
@@ -48,6 +42,7 @@ class Classification_Model(pl.LightningDataModule):
         self.class_split = class_split
         self.finetune = finetune
         self.in_folders = in_folders
+        self.image_aug_p = image_aug_p
         torch.manual_seed(0)
 
     def setup(self, stage=None):
@@ -57,12 +52,15 @@ class Classification_Model(pl.LightningDataModule):
         #     transforms.ToTensor(),
         #     transforms.Resize((self.input_shape[1], self.input_shape[2]))
         # ])
-        transform = get_transforms(self.input_shape)
+        transforms = get_transforms(self.input_shape, mode='train')
+        pre_transforms = get_pre_transforms(self.input_shape)
+        augmentations = get_augmentations()
+        val_transforms = get_transforms(self.input_shape, mode='val')
 
         if self.name == DATASETS.CELEBA:
             labels_map = get_labels(config=config_celeba, in_folders=self.in_folders)
         elif self.name == DATASETS.LFW:
-            labels_map = get_dataset_filename_map(config = config_lfw)
+            labels_map = get_dataset_filename_map(config=config_lfw)
         elif self.name == DATASETS.CFW:
             labels_map = get_dataset_filename_map(config=config_cfw)
         else:
@@ -71,7 +69,7 @@ class Classification_Model(pl.LightningDataModule):
         valid, test = self.splitting_points
         train = 1 - (valid + test)
         if self.class_split:
-            nb_classes_train_val = int(self.nb_classes * (train+valid))
+            nb_classes_train_val = int(self.nb_classes * (train + valid))
             nb_classes_test = int(self.nb_classes * test)
             self.nb_classes_test = nb_classes_test
 
@@ -86,24 +84,31 @@ class Classification_Model(pl.LightningDataModule):
 
             assert diff == 0
 
-            start, end = 0,  nb_classes_train_val
+            start, end = 0, nb_classes_train_val
             print('train classes', start, end)
 
             self.train_val_dataset = ClassificationDataset(labels_map, num_classes=list(range(end)))
-            self.train_val_dataset.set_transform(transform)
+            # self.train_val_dataset.set_transform(transform_train)
 
             n_samples = len(self.train_val_dataset)
             val_size = int(n_samples * valid)
             split_size = [n_samples - val_size, val_size]
 
             self.train_dataset, self.val_dataset = random_split(self.train_val_dataset, split_size)
+            self.train_dataset = MapDataset(self.train_dataset, pre_transforms)
+            if self.image_aug_p > 0:
+                self.train_dataset = augment_dataset(self.train_dataset, augmentations, self.image_aug_p)
+                print('size of augmented dataset', len(self.train_dataset))
+
+            self.train_dataset = MapDataset(self.train_dataset, transforms)
+            self.val_dataset = MapDataset(self.val_dataset, val_transforms)
 
             self.test_dataset = None
             if nb_classes_test > 0:
-                start, end = end, end+nb_classes_test
+                start, end = end, end + nb_classes_test
                 print('test classes', start, end)
                 self.test_dataset = ClassificationDataset(labels_map, num_classes=list(range(start, end)))
-                self.test_dataset.set_transform(transform)
+                self.test_dataset = MapDataset(self.test_dataset, val_transforms)
                 print('split size', len(self.train_dataset), len(self.val_dataset), len(self.test_dataset))
             else:
                 print('split size', len(self.train_dataset), len(self.val_dataset))
@@ -116,21 +121,30 @@ class Classification_Model(pl.LightningDataModule):
             else:
                 self.dataset = ClassificationDataset(labels_map, num_classes=list(range(self.nb_classes)))
 
-            print('len', len(self.dataset))
-            self.dataset.set_transform(transform)
+            print('len full dataset', len(self.dataset))
             n_samples = len(self.dataset)
             val_size = int(n_samples * valid)
             test_size = int(n_samples * test)
             split_size = [n_samples - (val_size + test_size), val_size, test_size]
             print('split size', split_size)
+
             # split
             self.train_dataset, self.val_dataset, self.test_dataset = random_split(self.dataset, split_size)
+
+            self.train_dataset = MapDataset(self.train_dataset, pre_transforms)
+            # load the augmented dataset for a precentage of samples:
+            if self.image_aug_p > 0:
+                self.train_dataset = augment_dataset(self.train_dataset, augmentations, self.image_aug_p)
+                print('size of augmented dataset', len(self.train_dataset))
+
+            self.train_dataset = MapDataset(self.train_dataset, transforms)
+            self.val_dataset = MapDataset(self.val_dataset, val_transforms)
+            self.test_dataset = MapDataset(self.test_dataset, val_transforms)
         else:
             self.train_dataset = self.dataset
-            self.train_dataset.set_transform(transform)
-            self.val_dataset.set_transform(transform)
-            self.test_dataset.set_transform(transform)
-
+            self.train_dataset.set_transform(transforms)
+            self.val_dataset.set_transform(val_transforms)
+            self.test_dataset.set_transform(val_transforms)
 
     # return the dataloader for each split
     def train_dataloader(self):
@@ -185,6 +199,51 @@ class Classification_Model(pl.LightningDataModule):
                                            sampler=sampler,
                                            collate_fn=None
                                            )
+
+def augment_dataset(dataset, transforms, p):
+    """
+    adds transformed samples to dataset
+    :param dataset: dataset to augment
+    :param transforms: transforms used to augment
+    :param p: fraction of the dataset to augment [0, 1]
+    :return: input dataset plus augmented dataset
+    """
+    num_augmented = int(len(dataset) * p)
+    indices = list(range(len(dataset)))
+    np.random.shuffle(indices)
+    aug_dataset = torch.utils.data.Subset(dataset, indices[:num_augmented])
+    aug_dataset = MapDataset(aug_dataset, transforms)
+    return torch.utils.data.ConcatDataset([aug_dataset, dataset])
+
+class MapDataset(torch.utils.data.Dataset):
+    """
+    Given a dataset, creates a dataset which applies a mapping function
+    to its items (lazily, only when an item is called).
+
+    Note that data is not cloned/copied from the initial dataset.
+    """
+
+    def __init__(self, dataset, map_fn):
+        self.dataset = dataset
+        self.map = map_fn
+
+    def __getitem__(self, index):
+        x, y = self.dataset[index]
+        if self.map is not None:
+            x = self.map(x)
+        return x, y
+
+    def __len__(self):
+        return len(self.dataset)
+
+# def split_indices(len_dataset, split_size):
+#     indices = list(range(len_dataset))
+#     train_size, val_size, test_size = split_size[0], split_size[1], split_size[2]
+#     split = train_size
+#     split2 = train_size + val_size
+#     np.random.shuffle(indices)
+#     train_idx, valid_idx, test_idx = indices[:split], indices[split:split2], indices[split2:]
+
 
 class ClassificationDataset(Dataset):
     """ Face dataset. """
