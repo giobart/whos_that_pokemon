@@ -35,11 +35,14 @@ if the image features are already available is possible to populate the **img_fe
 
 - POST http://127.0.0.1:5000/api/find_match
 	- take a picture as input and return a matching user if any. Is possible to toggle the image cropping system (crops and align the image to the center) and the fraud tedection system.
+	- if liveness is true, frames contains 15 base64 pictures used for the liveness detection test
 ```
 {
 	"img_crop":bool,
-    	"fraud_detection":bool
-	"img_base64":"base64 encoded image"
+    	"fraud_detection":bool,
+	"liveness":bool,
+	"img_base64":"base64 encoded image",
+	"frames":[string]
 }
 ``` 
 
