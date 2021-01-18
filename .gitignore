@@ -137,3 +137,6 @@ dataset/
 #model
 model_data/
 data/
+
+#env
+virt/
