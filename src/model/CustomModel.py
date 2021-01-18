@@ -18,7 +18,7 @@ class Siamese(pl.LightningModule):
     """
     Siamese Network using either CE Loss or Contrastive Loss.
     """
-    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL.MyCNN, freeze_layers=True):
+    def __init__(self, hparams=None, scheduler_params=None, cnn_model=CNN_MODEL.InceptionResnetV1, freeze_layers=True):
         """
 
         :param hparams: optimizer parameters

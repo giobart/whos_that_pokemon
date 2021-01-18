@@ -56,3 +56,22 @@ Move inside the ` face-detection-UI ` folder and run the UI with `python entry.p
 In order to upload a new image to the database you must also run the `ìmage-registration-service` on the default 5005 port.  <br><br>
 Disclaimer: Don't trust the username & pass login, it is just a demonstrative login with default username "admin" and password "admin". Nothing more than a graphical feature to simulate a system administrator that adds new people to the database.
 
+## Training/Evaluting the Neural Network Models
+Three Models are supported. The first uses a small custom Siamese model and trains it using the contrastive loss. This model is mostly used to test our setup. The second model is also a Siamese model but transfer learning is performed on InceptionResnetV1 CNN pre-trained on vggface2 and uses Bineary Cross Entropy loss instead. The third model uses a Bn-Inception CNN pretrained on ImageNet and trains the model using the Group Loss.
+
+### Siamese Network using Binary Cross Entropy and Contrastive Loss
+The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross Entropy and Contrastive Loss. Some flages and variables, in the notebook, can be used to choose which the behaviour required. For example, to re-run the evluation for the Contrastive Loss (current state), the following should be set throughout the network: 
+```
+cnn_model = CNN_MODEL.InceptionResnetV1
+do_train = False
+save_checkpoint = False
+load_checkpoint = True
+```
+
+### Group Loss
+The Train_Group_Loss.ipynb is used to train the Group Loss Model. To get the best results, the model was trained on the classification task for 10 epochs before training on the Group Loss.
+Similar to the pervious model flages can be used to controll the behaviour required. For example to evaluate the model on
+
+### Results
+
+### References
