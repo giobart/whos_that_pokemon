@@ -1,21 +1,12 @@
-
-
-
-
-
-
-
-
-
-
-
-
-[submodule "face-detection-UI"]
-	path = face-detection-UI
-	url = https://github.com/giobart/face-detection-UI
 [submodule "image-registration-service"]
 	path = image-registration-service
 	url = https://github.com/giobart/image-registration-service
+[submodule "face-detection"]
+	path = face-detection
+	url = https://github.com/giobart/face-detection
+[submodule "face-detection-UI"]
+	path = face-detection-UI
+	url = https://github.com/giobart/face-detection-UI
 [submodule "liveness_detection_service"]
 	path = liveness_detection_service
 	url = https://github.com/giobart/liveness_detection_service
