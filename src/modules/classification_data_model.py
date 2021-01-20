@@ -48,7 +48,7 @@ class Classification_Model(pl.LightningDataModule):
     def setup(self, stage=None):
         # transforms
         # transform = transforms.Compose([
-        #     # FaceAlignTransform(FaceAlignTransform.ROTATION),
+        #     # FaceAlignTransform(),
         #     transforms.ToTensor(),
         #     transforms.Resize((self.input_shape[1], self.input_shape[2]))
         # ])

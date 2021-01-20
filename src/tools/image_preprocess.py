@@ -3,19 +3,20 @@ from facenet_pytorch import MTCNN
 import numpy as np
 from PIL import Image
 import math
-from imgaug import augmenters as iaa
-
+import torch
 
 ALPHA_SHIFT = 10
 LEFT_EYE_POS = lambda w, h: (w / 3 + ALPHA_SHIFT, h / 3 + ALPHA_SHIFT)
 RIGHT_EYE_POS = lambda w, h: ((2 * w / 3) - ALPHA_SHIFT, h / 3 + ALPHA_SHIFT)
 NOSE_POS = lambda w, h: ((w / 2) + ALPHA_SHIFT, (3 * h / 5) + ALPHA_SHIFT)
 
+
 def angle_between_2_points(p1, p2):
     x1, y1 = p1
     x2, y2 = p2
     tan = (y2 - y1) / (x2 - x1)
     return np.degrees(np.arctan(tan))
+
 
 def get_rotation_matrix(p1, p2):
     angle = angle_between_2_points(p1, p2)
@@ -26,84 +27,105 @@ def get_rotation_matrix(p1, p2):
     M = cv2.getRotationMatrix2D((xc, yc), angle, 1)
     return M
 
-def get_affine_transform_matrix(p1, p2, p3, d1, d2, d3):
-    pts1 = np.float32([list(p1), list(p2), list(p3)])
-    pts2 = np.float32([list(d1), list(d2), list(d3)])
 
-    return cv2.getAffineTransform(pts1, pts2)
-
-
-def get_translation_matrix(p1, w, h):
-    x1, y1 = p1
-    tx = (w / 3) - x1
-    ty = (h / 3) - y1
-    if abs(tx) > w / 3:
-        # too big translation, lets avoid it
-        tx = 0
-        ty = 0
-    return np.float32([[1, 0, tx], [0, 1, ty]])
-
-
-def get_scaling_factor(p1, p2, w):
-    x1, y1 = p1
-    x2, y2 = p2
-    d_x1 = math.sqrt(abs(x1 - x2) ** 2 + abs(y1 - y2) ** 2)
-    d_final = (2 * w / 3) - w / 3
-    return d_final / d_x1
-
-
-def image_deep_alignment(img, transform_kind):
+def image_deep_alignment(img, transform_kind="crop", precomputed_detection=None, precomputed_landmarks=None,
+                         compute_landmarks=True):
     # convert image to np array
     img = np.array(img)
 
-    # cv2 image color conversion
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    detections = None
+    landmarks = None
 
-    # initialize detector
-    face_detector = MTCNN()
-    face_detector.select_largest = True
-
-    # detect landmark points
-    detections, probs, landmarks = face_detector.detect(img, landmarks=True)
+    # compute bounding box and landmarks
+    if precomputed_detection is None or precomputed_landmarks is None:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # initialize detector
+        face_detector = MTCNN(device=device)
+        face_detector.select_largest = True
+        detections, probs, landmarks = None, None, None
+        # detect landmark points
+        if not compute_landmarks:
+            detections, probs = face_detector.detect(img, landmarks=False)
+        else:
+            detections, probs, landmarks = face_detector.detect(img, landmarks=True)
+    else:
+        detections = precomputed_detection
+        landmarks = precomputed_landmarks
 
     transformed = img
+
     if detections is not None:
 
-        x, y, x2, y2 = detections[0][0], detections[0][1], detections[0][2], detections[0][3]
-        left_eye = landmarks[0][0]
-        right_eye = landmarks[0][1]
-        nose = landmarks[0][4]
-        w = img.shape[0]
-        h = img.shape[1]
+        x, y, x2, y2 = int(detections[0][0]), int(detections[0][1]), int(detections[0][2]), int(detections[0][3])
+        h = img.shape[0]
+        w = img.shape[1]
 
+        # rotation transformation
         if transform_kind == FaceAlignTransform.ROTATION:
+            left_eye = landmarks[0][0]
+            right_eye = landmarks[0][1]
+            nose = landmarks[0][4]
             rotation = get_rotation_matrix(left_eye, right_eye)
-            # translation = get_translation_matrix(left_eye, w, h)
-            # translated = cv2.warpAffine(img, translation, img.shape[:2], flags=cv2.INTER_CUBIC)
             transformed = cv2.warpAffine(img, rotation, img.shape[:2], flags=cv2.INTER_CUBIC)
-        elif transform_kind == FaceAlignTransform.AFFINE:
-            matrix = get_affine_transform_matrix(
-                left_eye, right_eye, nose,
-                LEFT_EYE_POS(w, h), RIGHT_EYE_POS(w, h), NOSE_POS(w, h)
-            )
-            transformed = cv2.warpAffine(img, matrix, img.shape[:2], flags=cv2.INTER_CUBIC)
 
-    transformed = cv2.cvtColor(transformed, cv2.COLOR_BGR2RGB)
-    return Image.fromarray(transformed)
+        # crop the bounding boxes and expand the box by a factor of 1/3
+        elif transform_kind == "crop":
+            y = y - int((y2 - y) * 1 / 3)
+            if y < 0:
+                y = 0
+            y2 = y2 + int((y2 - y) * 1 / 3)
+            if y2 > h:
+                y2 = h - 1
+            x = x - int((x2 - x) * 1 / 3)
+            if x < 0:
+                x = 0
+            x2 = x2 + int((x2 - x) * 1 / 3)
+            if x2 > w:
+                x2 = w - 1
+            return Image.fromarray(img[y:y2, x:x2, :]), detections, landmarks
+
+    return Image.fromarray(transformed), detections, landmarks
+
 
 class FaceAlignTransform(object):
     """
-    Align the face
+    Align the face by crop only (SIMPLE kind) or crop and rotation (ROTATION kind)
     """
 
-    ROTATION = "r"
-    AFFINE = "a"
+    ROTATION = "r"  # crop and rotation
+    SIMPLE = "a"    # crop only
 
-    def __init__(self, kind=AFFINE):
-        self.transform_kind = kind
+    def __init__(self, shape, kind="a"):
+        self.shape = shape
+        self.kind = kind
 
     def __call__(self, img):
-        return image_deep_alignment(img, self.transform_kind)
+        return self.crop_and_resize(img)
+
+    def crop_and_resize(self, img):
+        detections = None
+        landmarks = None
+        if self.kind is FaceAlignTransform.SIMPLE:
+            img, _, _ = image_deep_alignment(img, compute_landmarks=False)
+        else:
+            img, detections, landmarks = image_deep_alignment(img)
+
+        # create a square image and center the cropped face
+        old_size = img.size
+        ratio = float(self.shape) / max(old_size)
+        new_size = tuple([int(x * ratio) for x in old_size])
+        img = img.resize(new_size, Image.ANTIALIAS)
+        new_im = Image.new("RGB", (self.shape, self.shape))
+        new_im.paste(img, ((self.shape - new_size[0]) // 2,
+                           (self.shape - new_size[1]) // 2))
+        img = new_im
+
+        # rotate the image
+        if self.kind is FaceAlignTransform.ROTATION:
+            img, _, _ = image_deep_alignment(img, transform_kind="r", precomputed_detection=detections,
+                                             precomputed_landmarks=landmarks)
+        return img
+
 
 class ToNumpy(object):
     """
@@ -115,6 +137,7 @@ class ToNumpy(object):
 
     def __call__(self, img):
         return np.array(img)
+
 
 class ImageAugmentation:
     @staticmethod
