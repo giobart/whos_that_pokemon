@@ -100,7 +100,7 @@ Links in the notebook are provided to get all checkpoints used.
 
 The Group Loss overcomes the problem of other loss functions such as the contrastive loss and the triplet loss which compare pairs or triplets of images together respectively. That means it is hard to consider all possible combinations. In addition, those loss functions require an extra hyper-parameter (margin) to furthermore separate the embeddings of images corresponding to different persons in the embedding space. On the other hand, the group loss compares all the samples in one batch to each other. It uses a similarity measure as prior information to decide whether to images correspond to the same person or not, and by doing that it learns a clear separation of the embeddings. In other words, the group loss answers the question "given that those two images are x similar to each other, what is the probability of them having the same label?" and it does that for all possible combinations of images in a batch by utilizing the gram matrix.
 
-For the group loss to work, a costume sampler is needed for creating each batch. The sampler chooses n classes with m number of images per class to include in every batch. Choosing n = 24 and m = 2 yields the best results for us.
+For the group loss to work, a costume sampler is needed for creating each batch. The sampler chooses n classes with m number of images per class to include in every batch. Choosing n = 24 and m = 2 yields the best results.
 
 #### Evaluation
 
@@ -108,7 +108,7 @@ For the group loss to work, a costume sampler is needed for creating each batch.
 
 We use the accuracy metric to evaluate the performance of our algorithm 
 
-Below you can find some visualization of our result:
+Below you can find some visualization of our result where a threshold of 0.85 can label all images correctly:
 
 ![Group loss visualization on LFW](./figures/Group_loss/group_test_lfw_vis_finetuned_all.png)
 
