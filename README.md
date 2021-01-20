@@ -1,13 +1,29 @@
 # Who's that Pokemon
 
+## Environment
+
+This project provides a script that setup the environment of the main repository automatically. <br><br>
+To create the virtual environment simply run:<br>
+```
+python env_builder.py
+```
+this script will create a virtualenv inside `virt/` folder. (This operation may take few minutes) <br><br>
+To activate the virtual environment use:<br>
+```
+. virt/bin/activate
+```
+To deactivate the virtual environment use:<br>
+```
+deactivate
+```
+
 ## Requirements
-install the requirements with:
-```pip install -r requirements.txt```
 
-## Download the dataset
-The current dataset used is the LFW and can be download from [LFW-People](https://www.kaggle.com/atulanandjha/lfwpeople)
-
-- The dataset can be automatically downloaded with the command `dataset_download_targz()` as shown in the `data_visualization` notebook.
+If you don't use the automatic generated virtual environment or if you're running the code inside the submodules 
+you need to install the requirements running:
+```
+pip install -r requirements.txt
+```
 
 ## Dataset data module
 The Data Module takes in input a dataset and generates training,validation and test set. 
