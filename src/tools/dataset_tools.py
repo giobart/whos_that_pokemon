@@ -288,7 +288,7 @@ def get_transforms(input_shape, mode='train'):
         print('Images not Augmented', mode)
         return transforms.Compose([
             transforms.Resize((input_shape[1], input_shape[2])),
-            FaceAlignTransform(FaceAlignTransform.SIMPLE),
+            FaceAlignTransform(shape=input_shape[1], kind=FaceAlignTransform.SIMPLE),
             transforms.ToTensor(),
 
         ])
