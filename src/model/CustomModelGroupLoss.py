@@ -3,13 +3,11 @@ from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from src.tools.model_tools import get_labeled_and_unlabeled_points
-from src.model.GeneralLayers import FCN_layer
-from src.model.CNN_Nets import myCNN, BnInception
+from src.model.CNN_Nets import BnInception
 from enum import Enum
 from torch.optim.lr_scheduler import StepLR
 from src.tools import gtg
 import sys
-from src.tools import evaluation_tool
 from src.tools.evaluation_tool import GroupRecall
 
 class CNN_MODEL_GROUP(Enum):
