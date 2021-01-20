@@ -73,16 +73,21 @@ In order to upload a new image to the database you must also run the `ìmage-reg
 Disclaimer: Don't trust the username & pass login, it is just a demonstrative login with default username "admin" and password "admin". Nothing more than a graphical feature to simulate a system administrator that adds new people to the database.
 
 ## Neural Network Models
-Three Models are supported for face recognition. The first model, uses a small custom Siamese model and trains it using the contrastive loss. This model is mostly used to test our setup. The second model is also a Siamese model but transfer learning is performed on InceptionResnetV1 CNN pre-trained on vggface2 and uses Bineary Cross Entropy loss instead. The third model uses a Bn-Inception CNN pretrained on ImageNet and trains the model using the Group Loss. We also use an extra model to perform liveness detection before the face recognition stage.
+Three Models are supported for face recognition. The first model, uses a small custom Siamese model and trains it using the contrastive loss. This model is mostly used to test our setup. The second model is also a Siamese model but transfer learning is performed on InceptionResnetV1 CNN pre-trained on vggface2 and uses Binary Cross Entropy loss instead. The third model uses a Bn-Inception CNN pre-trained on ImageNet and trains the model using the Group Loss. We also use an extra model to perform liveness detection before the face recognition stage.
 
 ### Siamese Network using Binary Cross Entropy and Contrastive Loss
-The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross Entropy and Contrastive Loss. Some flages and variables, in the notebook, can be used to choose which the behaviour required. For example, to re-run the evluation for the Contrastive Loss (current state), the following should be set throughout the network: 
+
+#### Running the notebook
+
+The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross Entropy and Contrastive Loss. Some flags and variables, in the notebook, can be used to choose which the behavior required. For example, to re-run the evaluation for the Contrastive Loss (current state), the following should be set throughout the network: 
 ```
 cnn_model = CNN_MODEL.InceptionResnetV1
 do_train = False
 save_checkpoint = False
 load_checkpoint = True
 ```
+#### Evaluation
+
 We use the accuracy metric to evaluate our models. The accuracy is calculated by counting correctly classified images over the incorrect ones and in this case correctly classified means if they are similar or not. For the Contrastive Loss model, in order to know whether two images are similar or not, we compare the output embeddings to each other by computing the L2 norm and if the value is less than a specific threshold then we label them as equal. In order to find the best threshold we run the evaluation several times to get the threshold that achieves the best accuracy. The final accuracy value is achieved by averaging over batches and epochs.
 
 ![mycnn_contra](./figures/MyCNN_Contrastive/mycnn_contra.png)
@@ -120,13 +125,13 @@ For the group loss to work, a costume sampler is needed for creating each batch.
 
 #### Evaluation
 
+We use the recall@1 metric to evaluate the performance of our algorithm which is calculated by getting the most similar image to each of the images in the batch and checking if the labels are the same. Summing correctly identified samples and averaging the values over batches and epochs, in case of training, will give us the final result. Nevertheless, the value is strongly related to the number of classes per batch n and number of image per class per patch m. This gives us a clearer analysis of our results. Our final test results on LFW, using n = 8 and m = 3 Dataset are as follows:
 
+![group loss LFW test result](./figures/Group_loss/group_test_lfw_finetuned_all.png)
 
-We use the accuracy metric to evaluate the performance of our algorithm 
+Below you can find some visualization of our result on the test dataset where a threshold of 0.8 can label all images correctly:
 
-Below you can find some visualization of our result where a threshold of 0.85 can label all images correctly:
-
-![Group loss visualization on LFW](./figures/Group_loss/group_test_lfw_vis_finetuned_all.png)
+![Group loss visualization on LFW](./figures/Group_loss/group_finetuned_all_vis_multi.png)
 
 ### Liveness Detection
 
