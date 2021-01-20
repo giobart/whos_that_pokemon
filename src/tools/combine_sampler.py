@@ -1,3 +1,6 @@
+"""
+Credits goes to https://github.com/dvl-tum/group_loss
+"""
 from torch.utils.data.sampler import Sampler
 import random
 
