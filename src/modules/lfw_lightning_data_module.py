@@ -15,13 +15,16 @@ class LFW_DataModule(pl.LightningDataModule):
     def __init__(self, dataset, batch_size=32, splitting_points=(0.11, 0.11), num_workers=4, shuffle=False, manual_split=False,
                  valid_dataset=None, test_dataset=None, input_size=128):
         """
-        Args:
-            dataset: LfwImagesDataset(), if manual_split==True than this is the LfwImagesPairsDataset train set
-            batch_size: default value: 32
-            splitting_points:   splitting point % for train, test and validation.
-                                default (0.6,0.85) -> 60% train, 25% validation, 15% test
-            valid_dataset: if manual_split==True this must be the validation LfwImagesPairsDataset
-            manual_split: if manual_split==True this must be the test LfwImagesPairsDataset
+        :param dataset: LfwImagesDataset(), if manual_split==True than this is the LfwImagesPairsDataset train set
+        :param batch_size: default value: 32
+        :param splitting_points: splitting point fraction for test and validation.
+                                default (0.11, 0.11) -> 78% train, 11% validation, 11% test
+        :param num_workers: if manual_split==True this must be the validation LfwImagesPairsDataset
+        :param shuffle: (bool) shuffle the valid dataset
+        :param manual_split: if manual_split==True this must be the test LfwImagesPairsDataset
+        :param valid_dataset: provide valid_dataset
+        :param test_dataset: provide test_dataset
+        :param input_size: (int) size of the input image. assuming width and height are the same
         """
         super().__init__()
         self.batch_size = batch_size
@@ -150,7 +153,7 @@ class LfwImagesDataset(Dataset):
 
 
 class LfwImagesPairsDataset(Dataset):
-    """ Face dataset. """
+    """ Dataset with items being (image1, image2, label) """
 
     def __init__(self, data_map, pairs, transform=None):
         """

@@ -1,3 +1,5 @@
+"""Cridets goes to https://github.com/dvl-tum/group_loss"""
+
 import torch.nn as nn
 import torch
 from src.tools import dynamics

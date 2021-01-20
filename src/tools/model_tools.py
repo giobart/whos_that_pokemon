@@ -5,6 +5,13 @@ import sklearn
 from src.tools import evaluation_tool
 
 def inference(model, images=None, loader=None):
+    """
+    inference function used for the Siamese, which takes two images as input and outputs there embeddings.
+    :param model: model used for inference
+    :param images: if not None then they will be used instead of the images in the loader as input to the model.
+    :param loader: dataloader with items (image1, image2, label)
+    :return: generator of tuples (image1, image2, labe, distance)
+    """
     if images is None:
         with torch.no_grad():
             for batch in loader:
@@ -52,7 +59,7 @@ def inference_one(model, images=None, loader=None):
     :param model: LightningModule to use
     :param images: List of tuples: [(image1, label1), (image2, label2), ...]
     :param loader:
-    :return:
+    :return: generator with tuples (image1, label, logits)
     """
     if images is None:
         with torch.no_grad():
@@ -101,6 +108,15 @@ def get_k_similar_group(model, images=None, loader=None, k=1):
 
 
 def get_similar_ind(k, model=None, emb=None, batch=None, images=None):
+    """
+
+    :param k: indices of the k most similar images to return
+    :param model: model used to generate the indices
+    :param emb: if embeddings are not None, no need to used the model to compute them
+    :param batch: batch of (images, labels)
+    :param images: images as pytorch tensor.
+    :return:
+    """
     with torch.no_grad():
         if emb is None:
             emb, _ = evaluation_tool.predict_batchwise(model, batch=batch, images=images)
@@ -112,6 +128,7 @@ def get_similar_ind(k, model=None, emb=None, batch=None, images=None):
         return indices, distances
 
 def get_labeled_and_unlabeled_points(labels, num_points_per_class, num_classes=100):
+    """Cridets to https://github.com/dvl-tum/group_loss"""
     labs, L, U = [], [], []
     labs_buffer = np.zeros(num_classes)
     num_points = labels.shape[0]
@@ -126,6 +143,7 @@ def get_labeled_and_unlabeled_points(labels, num_points_per_class, num_classes=1
 
 def assign_by_euclidian_at_k_indices(X, k):
     """
+    Cridets to https://github.com/dvl-tum/group_loss
         X : [nb_samples x nb_features], e.g. 100 x 64 (embeddings)
         k : for each sample, assign target labels of k nearest points
     """
@@ -146,6 +164,7 @@ def assign_by_euclidian_at_k_indices(X, k):
 
 class ContrastiveLoss(torch.nn.Module):
     """
+    Cridets to https://github.com/dvl-tum/group_loss
     Contrastive loss function.
     Based on: http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
     """
