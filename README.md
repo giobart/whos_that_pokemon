@@ -101,7 +101,7 @@ For the Binary Cross Entropy model the accuracy is simpler to compute since the 
 #### Running the notebook
 
 The Train_Group_Loss.ipynb Notebook is used to train the Group Loss Model. To get the best results, the model was trained on the classification task for 10 epochs before training on the Group Loss which is also the same approach as in the original paper. In addition to that, we tuned the hyper-parameters and used the whole CelebA dataset for training and validation, and LFW for testing.
-Similar to the previous model, flags can be used to control the behavior required. For example to evaluate the model on LFW, the following flags throughout the notebook should be set as following:
+Similar to the previous model, flags can be used to choose the behavior required. For example to evaluate the model on LFW, the following flags throughout the notebook should be set as following:
 
 ```python
 do_tune = False # we don't want to run hyper-parameter tuning
@@ -128,6 +128,12 @@ For the group loss to work, a costume sampler is needed for creating each batch.
 We use the recall@1 metric to evaluate the performance of our algorithm which is calculated by getting the most similar image to each of the images in the batch and checking if the labels are the same. Summing correctly identified samples and averaging the values over batches and epochs, in case of training, will give us the final result. Nevertheless, the value is strongly related to the number of classes per batch n and number of image per class per patch m. This gives us a clearer analysis of our results. Our final test results on LFW, using n = 8 and m = 3 Dataset are as follows:
 
 ![group loss LFW test result](./figures/Group_loss/group_test_lfw_finetuned_all.png)
+
+We have also calculate the accuracy in the same way on the the same test dataset as in the previous BCE model to compare the performance of both models. Our results are as follows:
+
+![Group loss visualization on LFW](./figures/Group_loss/group_lfw_test_acc.png)
+
+The result shows that at a threshold of 0.94 we get 94% accuracy which is around 4% more the the BCE model. Moreover, training this model was much more stable which means it has much less variance.
 
 Below you can find some visualization of our result on the test dataset where a threshold of 0.8 can label all images correctly:
 

@@ -4,7 +4,7 @@ from torch import nn
 from src.tools import evaluation_tool
 import sklearn
 from pytorch_lightning.metrics.functional import accuracy
-from matplotlib.pyplot import plot
+import matplotlib.pyplot as plt
 from src.modules.lfw_lightning_data_module import LfwImagesPairsDataset, LFW_DataModule
 from src.tools.dataset_tools import get_dataset_filename_map, dataset_download_targz, get_pairs
 import multiprocessing as mp
@@ -233,4 +233,7 @@ def eval_group_loss_lfw(model):
         bounds.append(boundary)
         init_bound += 0.01
 
-    plot(bounds, accs)
+    plt.plot(bounds, accs)
+    plt.title("Accuracy vs Threshold")
+    plt.xlabel("Threshold")
+    plt.ylabel("Accuracy")
