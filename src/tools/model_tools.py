@@ -1,8 +1,13 @@
 import torch
 import numpy as np
 from torch import nn
-import sklearn
 from src.tools import evaluation_tool
+import sklearn
+from pytorch_lightning.metrics.functional import accuracy
+from matplotlib.pyplot import plot
+from src.modules.lfw_lightning_data_module import LfwImagesPairsDataset, LFW_DataModule
+from src.tools.dataset_tools import get_dataset_filename_map, dataset_download_targz, get_pairs
+import multiprocessing as mp
 
 def inference(model, images=None, loader=None):
     """
@@ -178,3 +183,54 @@ class ContrastiveLoss(torch.nn.Module):
                                       (label) * torch.pow(torch.clamp(self.margin - distance, min=0.0), 2))
         return loss_contrastive
 
+def eval_group_loss_lfw(model):
+    dataset_download_targz()
+    image_map = get_dataset_filename_map(min_val=1)
+    pairs_map = get_pairs()
+    train_dataset = LfwImagesPairsDataset(image_map, pairs_map["train"])
+    val_dataset = LfwImagesPairsDataset(image_map, pairs_map["valid"])
+    test_dataset = LfwImagesPairsDataset(image_map, pairs_map["test"])
+
+    dataloader = LFW_DataModule(
+        train_dataset,
+        batch_size=32,
+        splitting_points=None,
+        num_workers=mp.cpu_count(),
+        manual_split=True,
+        valid_dataset=val_dataset,
+        test_dataset=test_dataset,
+        input_size=model.input_size
+    )
+    dataloader.setup()
+    test_loader = dataloader.test_dataloader()
+
+
+    init_bound = 0.85
+    bounds = []
+    accs = []
+
+    while init_bound < 1:
+        boundary = init_bound
+        total_acc = 0
+
+        for image1, image2, label in test_loader:
+            images = torch.cat([image1, image2]).squeeze()
+            with torch.no_grad():
+                emb, _ = evaluation_tool.predict_batchwise(model, images=images)
+                distances = sklearn.metrics.pairwise.pairwise_distances(emb)
+                row_ind = list(range(int(len(distances) / 2)))
+                col_ind = list(range(int(len(distances) / 2), len(distances)))
+
+                distances_pairs = distances[row_ind, col_ind]
+                distances_pairs[distances_pairs > boundary] = 1.0
+                distances_pairs[distances_pairs < boundary] = 0.0
+                y_hat = torch.tensor(distances_pairs)
+                total_acc += accuracy(y_hat, label)
+
+        total_acc = total_acc / len(test_loader)
+
+        accs.append(total_acc)
+        bounds.append(boundary)
+        init_bound += 0.01
+
+    plot(bounds, accs)
