@@ -38,7 +38,7 @@ pip install -r requirements.txt
 ####  **Research block:** <br>
 A set of jupyter notebook and python modules that are the building block for the research made in this project. All of this belongs to this main repository. Here you'll find:
 
-```bash
+```
 .
 ├── data_visualization.ipynb: 
 │			Description:	
@@ -93,7 +93,7 @@ The application block consists of all the microservices that compose the final w
 
 These services are part of the following submodules:
 
-```bash
+```
 .
 ├── face-detection-UI 
 ├── image-registration-service
