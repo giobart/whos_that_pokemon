@@ -12,8 +12,18 @@ from src.tools import evaluation_tool
 from src.tools.evaluation_tool import GroupRecall
 
 class Classification_Trainer(pl.LightningModule):
-    def __init__(self, hparams={}, scheduler_params={}, nb_classes=1, pretrained_classes=-1, checkpoint_path=''):
+    """Used to train the liveness detection model using transfer learning, only that last linear layer of the
+    BN_Inception network will be trained. The model detects open vs closed eyes and is used to check if a person
+    is blinking."""
+    def __init__(self, hparams={}, scheduler_params={}, nb_classes=2, pretrained_classes=-1, checkpoint_path=''):
+        """
 
+        :param hparams: parameters for the optimizer
+        :param scheduler_params: parameters for the scheduler
+        :param nb_classes: number of classes to be used
+        :param pretrained_classes: number of classes the checkpoint provided in checkpoint_path was trained on.
+        :param checkpoint_path: used to init the weights of the model.
+        """
         super().__init__()
         self.hparams = hparams
         self.scheduler_params = scheduler_params

@@ -21,11 +21,28 @@ class DATASETS(Enum):
 
 
 class Classification_Model(pl.LightningDataModule):
+    """Dataloader used to load the data for the training the liveness detection and the group loss models which use
+    CelebA or LFW, and CFW respectively."""
     def __init__(self, name=DATASETS.CELEBA, nb_classes=1000, class_split=True, batch_size=32,
                  splitting_points=(0.10, 0.10),
-                 num_workers=4, manual_split=False, valid_dataset=None, input_shape=(3, 218, 178),
+                 num_workers=4, input_shape=(3, 218, 178),
                  num_classes_iter=8, finetune=False, in_folders=True, image_aug_p=0):
+        """
 
+        :param name: Choice from DATASETS
+        :param nb_classes: number of classes to load
+        :param class_split: whether to split based on the number of classes
+        :param batch_size: batch size of the dataloader
+        :param splitting_points: splitting point fraction for test and validation.
+                                default (0.10, 0.10) -> 80% train, 10% validation, 10% test
+        :param num_workers: number of workers to be used to load the data.
+        :param input_shape: (Tuple) (channels, width, height).
+        :param num_classes_iter: number of different classes per batch. Used with train, and validation dataloaders of
+         CelebA dataset which need a custom sampler.
+        :param finetune: Whether we are working on finetune task. If True, the custom sampler will not be used.
+        :param in_folders: Whether the images are stored in one dir or in sub-dir
+        :param image_aug_p: if >0 image_aug_p*len(dataset) images will be augmented and added.
+        """
         super().__init__()
         self.batch_size = batch_size
         self.splitrate = 0.2
@@ -33,8 +50,6 @@ class Classification_Model(pl.LightningDataModule):
         self.splitting_points = splitting_points
         self.num_workers = num_workers
         self.train_dataset = None
-        self.val_dataset = valid_dataset
-        self.manual_split = manual_split
         self.input_shape = input_shape
         self.num_classes_iter = num_classes_iter
         self.num_elements_class = int(batch_size / num_classes_iter)
@@ -46,12 +61,6 @@ class Classification_Model(pl.LightningDataModule):
         torch.manual_seed(0)
 
     def setup(self, stage=None):
-        # transforms
-        # transform = transforms.Compose([
-        #     # FaceAlignTransform(FaceAlignTransform.ROTATION),
-        #     transforms.ToTensor(),
-        #     transforms.Resize((self.input_shape[1], self.input_shape[2]))
-        # ])
         transforms = get_transforms(self.input_shape, mode='train')
         pre_transforms = get_pre_transforms(self.input_shape)
         augmentations = get_augmentations()
@@ -113,7 +122,7 @@ class Classification_Model(pl.LightningDataModule):
             else:
                 print('split size', len(self.train_dataset), len(self.val_dataset))
 
-        elif not self.manual_split:
+        else:
             # define split point
             if self.name == DATASETS.CFW:
                 self.dataset = ClassificationDataset(labels_map, map_to_int=True, offset_y=0,
@@ -140,11 +149,7 @@ class Classification_Model(pl.LightningDataModule):
             self.train_dataset = MapDataset(self.train_dataset, transforms)
             self.val_dataset = MapDataset(self.val_dataset, val_transforms)
             self.test_dataset = MapDataset(self.test_dataset, val_transforms)
-        else:
-            self.train_dataset = self.dataset
-            self.train_dataset.set_transform(transforms)
-            self.val_dataset.set_transform(val_transforms)
-            self.test_dataset.set_transform(val_transforms)
+
 
     # return the dataloader for each split
     def train_dataloader(self):
@@ -236,22 +241,18 @@ class MapDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.dataset)
 
-# def split_indices(len_dataset, split_size):
-#     indices = list(range(len_dataset))
-#     train_size, val_size, test_size = split_size[0], split_size[1], split_size[2]
-#     split = train_size
-#     split2 = train_size + val_size
-#     np.random.shuffle(indices)
-#     train_idx, valid_idx, test_idx = indices[:split], indices[split:split2], indices[split2:]
-
 
 class ClassificationDataset(Dataset):
-    """ Face dataset. """
+    """ Dataset with items being (image, label)"""
 
     def __init__(self, data_map, num_classes, transform=None, map_to_int=False, offset_y=1):
         """
-        Args:
-            data_map: key,value map of people and faces
+
+        :param data_map: Dict containing labels as keys and an array of paths of the images corrisponding to each label.
+        :param num_classes: (int) number of classes to be loaded.
+        :param transform: transforms to be added.
+        :param map_to_int: Maps the labels to int values. Used if the initial labels are strings.
+        :param offset_y: Adds an offset to the int labels. Used if the labels start from 1 and not from 0.
         """
         self.offset_y = offset_y
         self.image_map = data_map
@@ -265,6 +266,10 @@ class ClassificationDataset(Dataset):
         self.transform = transform
 
     def encode_classes(self):
+        """
+        encodes str labels to int
+        :return:
+        """
         for label in list(self.image_map.keys()):
             self.class_to_idx[label] = self.class_to_idx.get(label, len(self.class_to_idx))
 

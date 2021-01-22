@@ -2,6 +2,12 @@ import torch
 
 
 def save_model_txt(model, path):
+    """
+    save model as txt file to be able to load it on different versions of pytorch
+    :param model: model checkpoint to save
+    :param path: path to save at
+    :return:
+    """
     fout = open(path, 'w')
     for k, v in model.state_dict().items():
         fout.write(str(k) + '\n')
@@ -11,6 +17,13 @@ def save_model_txt(model, path):
 
 
 def load_model_txt(model, path):
+    """
+    loads model parameters saved as dict
+    :param model: model to load parameters to
+    :param path: path of checkpoint
+    :return:
+    """
+
     data_dict = {}
     fin = open(path, 'r')
     i = 0

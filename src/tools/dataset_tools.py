@@ -44,9 +44,7 @@ def dataset_download_targz(config=config_lfw):
     if len(folder_list) != 0:
         print("Dataset already downloaded")
         return
-    # target_filepath = path.join(".", config.DATASET_ZIP_NAME)
-    # gdown.download(config.DATASET_URL, target_filepath, quiet=False)
-    # gdrive_helper.download_file_from_google_drive(config.DATASET_URL, target_filepath)
+
     target_filepath = path.join(".")
     _download_zip(config.DATASET_URL, config.DATASET_ZIP_NAME, target_filepath)
     target_filepath = path.join(".", config.DATASET_ZIP_NAME)
@@ -62,10 +60,6 @@ def dataset_gdrive_download(config=config_lfw, url=None):
         print("Dataset already downloaded")
     else:
         target_filepath = path.join(".", config.DATASET_ZIP_NAME)
-        #         if url is not None:
-        #             gdown.download(url, target_filepath, quiet=False)
-        #         else:
-        #             gdown.download(config.DRIVE_URL, target_filepath, quiet=False)
 
         if url is not None:
             gdrive_helper.download_file_from_google_drive(url, target_filepath)
@@ -86,9 +80,8 @@ def dataset_gdrive_download(config=config_lfw, url=None):
         if os.path.exists(config.LABEL_TXT_PATH):
             print("Labels already downloaded")
             return
-        gdrive_helper.download_file_from_google_drive(config.LABEL_TXT_URL, config.LABEL_TXT_PATH)
-    #         gdown.download(config.LABEL_TXT_URL, config.LABEL_TXT_PATH, quiet=False)
 
+        gdrive_helper.download_file_from_google_drive(config.LABEL_TXT_URL, config.LABEL_TXT_PATH)
 
 def unrar_file(src, dst):
     from unrar import rarfile
@@ -96,6 +89,18 @@ def unrar_file(src, dst):
     rar.extractall(dst)
 
 def get_labels(config=config_lfw, in_folders=False):
+    """
+    Function used to return a map key-value
+        Key: Name of the person
+        Value: Image path list
+        This function mu
+    :param config: dataset configuration
+    :param in_folders: whether the samples are stored dir or in sub-dir.
+        Ex if true: config.DATASET_FOLDER_IMG -> Label1 -> image1
+                                                        -> image2...
+                                              -> Label2 -> imag1...
+    :return:
+    """
     labels_map = defaultdict(list)
 
     with open(config.LABEL_TXT_PATH) as file:
@@ -208,6 +213,11 @@ def get_dataset_filename_map(config=config_lfw, min_val=2, max_val=-1):
 
 
 def save_images_in_folders(config=None):
+    """
+    saves images in config.DATASET_FOLDER_IMG in subfolders with names as their labels
+    :param config:
+    :return:
+    """
     print('\nsaving images in folders')
     dataset_url = config.DATASET_FOLDER_IMG
 
@@ -235,45 +245,36 @@ def save_images_in_folders(config=None):
 
 
 def get_list_of_indices(dataset):
+    """
+
+    :param dataset:
+    :return: list of list with every index corresponding to the class labels and the sublists containing the ids
+    of the images corresponding to that label.
+    """
     ddict = defaultdict(list)
     for idx, (_, label) in enumerate(dataset):
         ddict[label].append(idx)
 
-    # list_of_indices_for_each_class = [ddict[key] for key in ddict]
-
     list_of_indices_for_each_class = list(ddict.values())
-    # for key in ddict:
-    #     list_of_indices_for_each_class.append(ddict[key])
 
     return list_of_indices_for_each_class
 
 
-# def get_transforms(input_shape, mode='train'):
-#     if mode == 'train' or mode == 'val' or mode == 'test':
-#         return transforms.Compose([
-#             transforms.Resize((input_shape[1], input_shape[2])),
-#             transforms.ToTensor(),
-#         ])
-#     elif mode == 'inference':
-#         return transforms.Compose([
-#             FaceAlignTransform(FaceAlignTransform.ROTATION),
-#             transforms.Resize((input_shape[1], input_shape[2])),
-#             transforms.ToTensor(),
-#
-#         ])
-
 def get_pre_transforms(input_shape):
+    """get transforms before applying image augmentation"""
     return transforms.Compose([
         transforms.Resize((input_shape[1], input_shape[2])),
     ])
 
 def get_augmentations():
+    """get image augmentation transforms"""
     return transforms.Compose([
                 ToNumpy(),
                 ImageAugmentation.getImageAug().augment_image,
             ])
 
 def get_transforms(input_shape, mode='train'):
+    """ get finishing transforms"""
     if mode == 'train':
         return transforms.Compose([
             transforms.ToTensor(),
@@ -287,7 +288,7 @@ def get_transforms(input_shape, mode='train'):
         print('Images not Augmented', mode)
         return transforms.Compose([
             transforms.Resize((input_shape[1], input_shape[2])),
-            FaceAlignTransform(FaceAlignTransform.ROTATION),
+            FaceAlignTransform(shape=input_shape[1], kind=FaceAlignTransform.SIMPLE),
             transforms.ToTensor(),
 
         ])
