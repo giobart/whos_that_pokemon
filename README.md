@@ -109,7 +109,7 @@ These services are part of the following submodules:
 In order to use the web application is important to run them all and the access the UI with a browser
 
 * **Local Deploy:** is possible to run these services locally using the `entry.py` script inside them as described in the apposite README file inside the submodule repository. A dockerfile is also provided but further configuration for the networking are necessary. 
-* **Deploy with Openshift** Each submodule comes together with the documentation to configure the deployment on Openshift like the following one
+* **Deploy with Openshift** Each submodule comes together with the documentation to configure a deployment on Openshift like the one in the following example
 
 ![Openshift Deploy Scheme](static/openshift-deploy.png)
 
