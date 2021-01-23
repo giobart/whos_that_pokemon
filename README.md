@@ -1,5 +1,10 @@
 # Who's that Pokemon
 
+This project wants to explore the power of Deep Learning in order to create models for face recognition and liveness detection that can be used for tasks like a website log in. 
+For this purpose, we propose a webapp that allows a system administrator to register new users using directly their face and gives the ability to log in using face recognition. Note that this application is not meant to be used for the public the login on the Internet. Rather is more suited for situations like a work environment where the employees have to register the working hours and demonstrate that they're working.
+
+![Project demo gif](static/liveness-correct.gif)
+
 ## Environment
 
 This project provides a script that setup the environment of the main repository automatically. <br><br>
