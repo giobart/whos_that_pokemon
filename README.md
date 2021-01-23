@@ -122,9 +122,9 @@ Further informations about these services are provided inside the README in each
 ## Datasets 
 The datasets used to train, evaluate and test the models are 3:
 
-* CelebA
-* CFW
-* LFW
+* CelebA [[4]]([4])
+* CEW [[1]]([1])
+* LFW [[2]]([2]) [[3]]([3])
 
 They are automatically downloaded through the scripts provided inside `src/tools/dataset_tools.py`, and the download link provided respectively inside `.config_celeba.py`, `.config_cfw.py` and `.config_lfw.py`.
 
@@ -132,7 +132,7 @@ The dataloaders for these datasets can be found inside `src/modules` as Pytorch 
 
 
 ## Image Transformation
-The images used for the training of the models are all quite uniform thanks to the amzing work made from the creators of these datasets. Anyway when dealing with images taken from the real world we should be very lucky to get images of the same size as the ones from the dataset and also with the same prospective of the subject. In particular, the model always expects an image with fixed width W and heigth H where W==H and, the face of the subject positioned exactly in the center, with such a rotation that positions the line that connect the eyes exatly parallel to the ground. 
+The images used for the training of the models are all quite uniform thanks to the amazing work made from the creators of these datasets. Anyway when dealing with images taken from the real world we should be very lucky to get images of the same size as the ones from the dataset and also with the same prospective of the subject. In particular, the model always expects an image with fixed width W and height H where W==H and, the face of the subject positioned exactly in the center, with such a rotation that positions the line that connect the eyes exactly parallel to the ground. 
 When feeding images from a real world scenario we need a transformation that normalize the size of the picture and positions the subject in a way similar to the one proposed for the used datasets. 
 
 The **FaceAlignTransform** located inside `src/tools/image_preprocessing.py` proposes 2 possible kind of transformation:
@@ -184,7 +184,7 @@ Three Models are supported for face recognition. The first model, uses a small c
 
 #### Running the notebook
 
-The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross Entropy and Contrastive Loss. Some flags and variables, in the notebook, can be used to choose which the behavior required. For example, to re-run the evaluation for the Contrastive Loss (current state), the following should be set throughout the network: 
+The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross Entropy and Contrastive Loss. Our work here is inspired by both papers `FaceNet: A unified embedding for face recognition and clustering`[[6]]([6]) and `DeepFace: Closing the Gap to Human-Level Performance in Face Verification`[[7]]([7]). Some flags and variables, in the notebook, can be used to choose which the behavior required. For example, to re-run the evaluation for the Contrastive Loss (current state), the following should be set throughout the network: 
 ```
 cnn_model = CNN_MODEL.InceptionResnetV1
 do_train = False
@@ -205,7 +205,7 @@ Some examples:
 
 ![InceptionResnetV1 BCE results visualization](./figures/InceptionResnetv1_BCE/inc_bce_test_vis.png)
 
-### Group Loss
+### Group Loss [[5]]([5])
 
 #### Running the notebook
 
@@ -250,7 +250,7 @@ Below you can find some visualization of our result on the test dataset where a 
 
 ### Liveness Detection
 
-The liveness detection is used as an extra check to verify whether the person is real or not. It can detect whether a person's eyes are open or closed and with that we can detect if a person blinks which can be added as a requirement on top of the face recognition system. The liveness.ipynb notebook is used to train and evaluate the model. The Closed Eyes in the WIld (CEW) Dataset was used to train the model but since this dataset doesn't contain a lot of images, a couple of tricks needed to be performed. Since we have already trained such a network with the Group Loss model, we were able to use that network with the same trained weights and apply transfer learning to retrain the last classification layer only which brings as to the first trick. For the second trick, we doubled the numbers of training samples by using image augmentation. The effect of image augmentation can be shown in the following graph comparing the three cases where we increased the size of the training set by 1.0, 1.5, and 2.0 for the orange, red and green curves respectively:
+The liveness detection is used as an extra check to verify whether the person is real or not. It can detect whether a person's eyes are open or closed and with that we can detect if a person blinks which can be added as a requirement on top of the face recognition system. The liveness.ipynb notebook is used to train and evaluate the model. The Closed Eyes in the WIld [[1]](#[1]) (CEW) Dataset was used to train the model but since this dataset doesn't contain a lot of images, a couple of tricks needed to be performed. Since we have already trained such a network with the Group Loss model, we were able to use that network with the same trained weights and apply transfer learning to retrain the last classification layer only which brings as to the first trick. For the second trick, we doubled the numbers of training samples by using image augmentation. The effect of image augmentation can be shown in the following graph comparing the three cases where we increased the size of the training set by 1.0, 1.5, and 2.0 for the orange, red and green curves respectively:
 
 
 
@@ -314,7 +314,9 @@ The checkpoints can be found here: https://drive.google.com/drive/folders/1puXPr
 
 <a name="[5]">[5]</a> Elezi, I., Vascon, S., Torcinovich, A., Pelillo, M., & Leal-Taixe, L. (2020). **The Group Loss for Deep Metric Learning.** In *European Conference on Computer Vision (ECCV)*.
 
-<a name="[6]">[6]</a> Taigman, Yaniv & Yang, Ming & Ranzato, Marc'Aurelio & Wolf, Lior. (2014). **DeepFace: Closing the Gap to Human-Level Performance in Face Verification.** Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition. 10.1109/CVPR.2014.220. 
+<a name="[6]">[6]</a> F. Schroff, D. Kalenichenko and J. Philbin, "**FaceNet: A unified embedding for face recognition and clustering,**" 2015 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Boston, MA, 2015, pp. 815-823, doi: 10.1109/CVPR.2015.7298682.
 
-<a name="[7]">[7]</a> F. Schroff, D. Kalenichenko and J. Philbin, "**FaceNet: A unified embedding for face recognition and clustering,**" 2015 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Boston, MA, 2015, pp. 815-823, doi: 10.1109/CVPR.2015.7298682.
+<a name="[7]">[7]</a> Taigman, Yaniv & Yang, Ming & Ranzato, Marc'Aurelio & Wolf, Lior. (2014). **DeepFace: Closing the Gap to Human-Level Performance in Face Verification.** Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition. 10.1109/CVPR.2014.220. 
+
+
 
