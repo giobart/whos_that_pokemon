@@ -96,7 +96,7 @@ class Siamese_Group(pl.LightningModule):
         loss = self.scaling_loss * nll + ce
         self.test_loss_nan(loss)
         recall = torch.tensor([0])
-        if mode == 'val' or (mode == 'train' and self.calc_train_stats):
+        if mode == 'val' or mode == 'test' or (mode == 'train' and self.calc_train_stats):
             recall = self.calc_recall(batch, fc)
 
         return loss, nll, ce, recall

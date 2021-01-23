@@ -39,7 +39,7 @@ pip install -r requirements.txt
 ## Project Structure
 
  This project is divided into 2 main blocks
- 
+
 ####  **Research block:** <br>
 A set of jupyter notebook and python modules that are the building block for the research made in this project. All of this belongs to this main repository. Here you'll find:
 
@@ -51,16 +51,16 @@ A set of jupyter notebook and python modules that are the building block for the
 │				LFW dataset and visualize some images
 ├── Train_BCE_Contrastive.ipynb 
 │			Description:	
-│				[Add description here]
+│				Used to train and evaluate both the BCE model and the Contrastive Loss model
 ├── Train_Group_Loss.ipynb 
 │			Description:	
-│				[Add description here]
+│				Used to train and evaluate the Group Loss model
 ├── evaluate.ipynb 
 │			Description:	
-│				[Add description here]
+│				Evaluation for the contrastive loss model
 ├── liveness.ipynb 
 │			Description:	
-│				[Add description here]
+│				Used to train the liveness detection model
 └── src/ 
 	 │		Description:	
 	 │			Folder containing all the python code 
@@ -71,7 +71,7 @@ A set of jupyter notebook and python modules that are the building block for the
 	 │			used for the evaluation of the models
 	 ├── hyper_tune/
 	 │		Description:	
-	 │			[Add description here]
+	 │			Contains the module used to do hyper-parameter tuning on the Group Loss model
 	 ├── model/
 	 │		Description:	
 	 │			To this folder belongs all the
@@ -132,7 +132,7 @@ The dataloaders for these datasets can be found inside `src/modules` as Pytorch 
 ## Image Transformation
 The images used for the training of the models are all quite uniform thanks to the amzing work made from the creators of these datasets. Anyway when dealing with images taken from the real world we should be very lucky to get images of the same size as the ones from the dataset and also with the same prospective of the subject. In particular, the model always expects an image with fixed width W and heigth H where W==H and, the face of the subject positioned exactly in the center, with such a rotation that positions the line that connect the eyes exatly parallel to the ground. 
 When feeding images from a real world scenario we need a transformation that normalize the size of the picture and positions the subject in a way similar to the one proposed for the used datasets. 
- 
+
 The **FaceAlignTransform** located inside `src/tools/image_preprocessing.py` proposes 2 possible kind of transformation:
 
 * Crop and Rotation
@@ -176,17 +176,22 @@ On the left side the original image captured from a webcam, on the right side th
 ![transform example](static/transform_comparison.jpg)
 
 ## Neural Network Models
-Three Models are supported for face recognition. The first model, uses a small custom Siamese model and trains it using the contrastive loss. This model is mostly used to test our setup. The second model is also a Siamese model but transfer learning is performed on InceptionResnetV1 CNN pre-trained on vggface2 and uses Bineary Cross Entropy loss instead. The third model uses a Bn-Inception CNN pretrained on ImageNet and trains the model using the Group Loss. We also use an extra model to perform liveness detection before the face recognition stage.
+Three Models are supported for face recognition. The first model, uses a small custom Siamese model and trains it using the contrastive loss. This model is mostly used to test our setup. The second model is also a Siamese model but transfer learning is performed on InceptionResnetV1 CNN pre-trained on vggface2 and uses Binary Cross Entropy loss instead. The third model uses a Bn-Inception CNN pre-trained on ImageNet and trains the model using the Group Loss. We also use an extra model to perform liveness detection before the face recognition stage.
 
 ### Siamese Network using Binary Cross Entropy and Contrastive Loss
-The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross Entropy and Contrastive Loss. Some flages and variables, in the notebook, can be used to choose which the behaviour required. For example, to re-run the evluation for the Contrastive Loss (current state), the following should be set throughout the network: 
+
+#### Running the notebook
+
+The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross Entropy and Contrastive Loss. Some flags and variables, in the notebook, can be used to choose which the behavior required. For example, to re-run the evaluation for the Contrastive Loss (current state), the following should be set throughout the network: 
 ```
 cnn_model = CNN_MODEL.InceptionResnetV1
 do_train = False
 save_checkpoint = False
 load_checkpoint = True
 ```
-We use the accuracy metric to evaluate our models. The accuracy is calculated by counting correctly classified images over the incorrect ones and in this case correctly classified means if they are similar or not. For the Contrastive Loss model, in order to know whether two images are similar or not, we compare the output embeddings to each other by computing the L2 norm and if the value is less than a specific threshold then we label them as equal. In order to find the best threshold we run the evaluation several times to get the threshold that achieves the best accuracy. The final accuracy value is achieved by averaging over batches and epochs.
+#### Evaluation
+
+We use the accuracy metric to evaluate our models. The accuracy is calculated by counting correctly classified images over the incorrect ones and in this case correctly classified means if they are similar or not. For the Contrastive Loss model, in order to know whether two images are similar or not, we compare the output embeddings to each other by computing the L2 norm and if the value is less than a specific threshold then we label them as equal. In order to find the best threshold we run the evaluation several times and choose the one with the best accuracy. The final accuracy value is achieved by averaging over batches and epochs.
 
 ![mycnn_contra](./figures/MyCNN_Contrastive/mycnn_contra.png)
 
@@ -194,12 +199,16 @@ For the Binary Cross Entropy model the accuracy is simpler to compute since the 
 
 ![jnception_bce_test](./figures/InceptionResnetv1_BCE/jnception_bce_test.png)
 
+Some examples:
+
+![InceptionResnetV1 BCE results visualization](./figures/InceptionResnetv1_BCE/inc_bce_test_vis.png)
+
 ### Group Loss
 
 #### Running the notebook
 
 The Train_Group_Loss.ipynb Notebook is used to train the Group Loss Model. To get the best results, the model was trained on the classification task for 10 epochs before training on the Group Loss which is also the same approach as in the original paper. In addition to that, we tuned the hyper-parameters and used the whole CelebA dataset for training and validation, and LFW for testing.
-Similar to the previous model, flags can be used to control the behavior required. For example to evaluate the model on LFW, the following flags throughout the notebook should be set as following:
+Similar to the previous model, flags can be used to choose the behavior required. For example to evaluate the model on LFW, the following flags throughout the notebook should be set as following:
 
 ```python
 do_tune = False # we don't want to run hyper-parameter tuning
@@ -219,31 +228,37 @@ Links in the notebook are provided to get all checkpoints used.
 
 The Group Loss overcomes the problem of other loss functions such as the contrastive loss and the triplet loss which compare pairs or triplets of images together respectively. That means it is hard to consider all possible combinations. In addition, those loss functions require an extra hyper-parameter (margin) to furthermore separate the embeddings of images corresponding to different persons in the embedding space. On the other hand, the group loss compares all the samples in one batch to each other. It uses a similarity measure as prior information to decide whether to images correspond to the same person or not, and by doing that it learns a clear separation of the embeddings. In other words, the group loss answers the question "given that those two images are x similar to each other, what is the probability of them having the same label?" and it does that for all possible combinations of images in a batch by utilizing the gram matrix.
 
-For the group loss to work, a costume sampler is needed for creating each batch. The sampler chooses n classes with m number of images per class to include in every batch. Choosing n = 24 and m = 2 yields the best results for us.
+For the group loss to work, a costume sampler is needed for creating each batch. The sampler chooses n classes with m number of images per class to include in every batch. Choosing n = 24 and m = 2 yields the best results.
 
 #### Evaluation
 
+We use the recall@1 metric to evaluate the performance of our algorithm which is calculated by getting the most similar image to each of the images in the batch and checking if the labels are the same. Summing correctly identified samples and averaging the values over batches and epochs, in case of training, will give us the final result. Nevertheless, the value is strongly related to the number of classes per batch n and number of image per class per patch m. This gives us a clearer analysis of our results. Our final test results on LFW, using n = 8 and m = 3 Dataset are as follows:
 
+![group loss LFW test result](./figures/Group_loss/group_test_lfw_finetuned_all.png)
 
-We use the accuracy metric to evaluate the performance of our algorithm 
+We have also calculate the accuracy in the same way on the the same test dataset as in the previous BCE model to compare the performance of both models. Our results are as follows:
 
-Below you can find some visualization of our result:
+![Group loss visualization on LFW](./figures/Group_loss/group_lfw_test_acc.png)
 
-![Group loss visualization on LFW](./figures/Group_loss/group_test_lfw_vis_finetuned_all.png)
+The result shows that at a threshold of 0.94 we get 94% accuracy which is around 4% more the the BCE model. Moreover, training this model was much more stable which means it has much less variance.
+
+Below you can find some visualization of our result on the test dataset where a threshold of 0.8 can label all images correctly:
+
+![Group loss visualization on LFW](./figures/Group_loss/group_finetuned_all_vis_multi.png)
 
 ### Liveness Detection
 
-The liveness detection is used as an extra check to verify whether the person is real or not. It can detect whether a person's eyes are open or closed and with that we can detect if a person blinks which can be added as a requirement on top of the face recognition system. The liveness.ipynb notebook is used to train and evaluate the model. CFW Dataset was used to train the model but since this dataset doesn't contain a lot of images, a couple of tricks needed to be performed. Since we have already trained such a network with the Group Loss model, we were able to use that network with the same trained weights and apply transfer learning to retrain the last classification layer only which brings as to the first trick. For the second trick, we doubled the numbers of training samples by using image augmentation. The effect of image augmentation can be shown in the following graph comparing the three cases where we increased the size of the training set by 1.0, 1.5, and 2.0 for the orange, red and green curves respectively:
+The liveness detection is used as an extra check to verify whether the person is real or not. It can detect whether a person's eyes are open or closed and with that we can detect if a person blinks which can be added as a requirement on top of the face recognition system. The liveness.ipynb notebook is used to train and evaluate the model. The Closed Eyes in the WIld (CEW) Dataset was used to train the model but since this dataset doesn't contain a lot of images, a couple of tricks needed to be performed. Since we have already trained such a network with the Group Loss model, we were able to use that network with the same trained weights and apply transfer learning to retrain the last classification layer only which brings as to the first trick. For the second trick, we doubled the numbers of training samples by using image augmentation. The effect of image augmentation can be shown in the following graph comparing the three cases where we increased the size of the training set by 1.0, 1.5, and 2.0 for the orange, red and green curves respectively:
 
 
 
 ![liveness validation accuracy](./figures/liveness/liveness_val_acc_all.png)
 
-​																											*Orange: x1 augmentation*
+​																							*Orange: x1 augmentation*
 
-​																										    *Red: x1.5 augmentation*
+​																						    *Red: x1.5 augmentation*
 
-​																								 	   	*Green: x2.0 augmentation*
+​																				 	   	*Green: x2.0 augmentation*
 
 The liveness.ipynb notebook was used to train the model. Similar to the previous notebooks, it is parametrized by various flags that should be set according the required behavior. For example to run the evaluation, the following flags throughout the network set as following:
 
@@ -260,6 +275,44 @@ The following are the evaluation results:
 
 ![Result Visualization](./figures/liveness/liveness_aug_vis.png)
 
-### Checkpoints
+## Model Zoo
 
-### References
+The checkpoints can be found here: https://drive.google.com/drive/folders/1puXPrBrquphElXiCDuZSIbSYdRqprxG0?usp=sharing
+
+| BCE Model                                          | Description                         | Accuracy |
+| :------------------------------------------------- | :---------------------------------- | -------- |
+| resnet_BCE/Siamese-BCE-epoch=19-val_loss=0.35.ckpt | Train on LFW. No Image Augmentation | 90.16%   |
+
+| Group Loss Model                                             |                                                              | Recall@1 |
+| :----------------------------------------------------------- | :----------------------------------------------------------- | -------- |
+| group_loss_tuned_2of24_all_data_finetuned/Group-epoch=17-val_loss=1.44-val_R%_@1=81.12.ckpt | Model fine-tuned, hyper-parameter tunned, trained on all of CelebA, and tested on LFW | 94.61%   |
+| group_loss_tuned_2of24_all_data/Group-epoch=30-val_loss=1.56-val_R%_@1=79.84.ckpt | Hyper-parameter tunned, trained on CelebA, and tested on LFW | 92.24%   |
+| group_loss_tuned_2of24/Group-epoch=24-val_loss=1.53-val_R%_@1=78.84.ckpt | Hyper-parameter tunned, trained and tested on CelebA.        | 91.50%   |
+
+| Liveness Detection Model                                     | Description                            | Accuracy |
+| ------------------------------------------------------------ | -------------------------------------- | -------- |
+| liveness_all_finetuned/Group-epoch=33-val_acc=0.88.ckpt      | Trained on CEW                         | 88.33%   |
+| liveness_all_finetuned_augmented_100%/Group-epoch=25-val_acc=0.91.ckpt | Trained on CEW with Image Augmentation | 90.01%   |
+
+
+
+## Citation
+
+### Datasets
+
+<a name="[1]">[1]</a> F.Song, X.Tan, X.Liu and S.Chen, **Eyes Closeness Detection from Still Images with Multi-scale Histograms of Principal Oriented Gradients,** Pattern Recognition, 2014.
+
+<a name="[2]">[2]</a> [Gary B. Huang](http://vis-www.cs.umass.edu/~gbhuang), Manu Ramesh, [Tamara Berg](http://research.yahoo.com/bouncer_user/83), and [Erik Learned-Miller](http://www.cs.umass.edu/~elm). **Labeled Faces in the Wild: A Database for Studying Face Recognition in Unconstrained Environments.** *University of Massachusetts, Amherst, Technical Report 07-49*, October, 2007.
+
+<a name="[3]">[3]</a> [Gary B. Huang](http://vis-www.cs.umass.edu/~gbhuang) and [Erik Learned-Miller](http://www.cs.umass.edu/~elm). **Labeled Faces in the Wild: Updates and New Reporting Procedures.** *University of Massachusetts, Amherst, Technical Report UM-CS-2014-003*, May, 2014.
+
+<a name="[4]">[4]</a> Liu, Z., Luo, P., Wang, X., & Tang, X. (2015). **Deep Learning Face Attributes in the Wild.** In *Proceedings of International Conference on Computer Vision (ICCV)*.
+
+### Models
+
+<a name="[5]">[5]</a> Elezi, I., Vascon, S., Torcinovich, A., Pelillo, M., & Leal-Taixe, L. (2020). **The Group Loss for Deep Metric Learning.** In *European Conference on Computer Vision (ECCV)*.
+
+<a name="[6]">[6]</a> Taigman, Yaniv & Yang, Ming & Ranzato, Marc'Aurelio & Wolf, Lior. (2014). **DeepFace: Closing the Gap to Human-Level Performance in Face Verification.** Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition. 10.1109/CVPR.2014.220. 
+
+<a name="[7]">[7]</a> F. Schroff, D. Kalenichenko and J. Philbin, "**FaceNet: A unified embedding for face recognition and clustering,**" 2015 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Boston, MA, 2015, pp. 815-823, doi: 10.1109/CVPR.2015.7298682.
+
