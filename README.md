@@ -34,7 +34,7 @@ pip install -r requirements.txt
 ## Project Structure
 
  This project is divided into 2 main blocks
- 
+
 ####  **Research block:** <br>
 A set of jupyter notebook and python modules that are the building block for the research made in this project. All of this belongs to this main repository. Here you'll find:
 
@@ -46,16 +46,16 @@ A set of jupyter notebook and python modules that are the building block for the
 │				LFW dataset and visualize some images
 ├── Train_BCE_Contrastive.ipynb 
 │			Description:	
-│				[Add description here]
+│				Used to train and evaluate both the BCE model and the Contrastive Loss model
 ├── Train_Group_Loss.ipynb 
 │			Description:	
-│				[Add description here]
+│				Used to train and evaluate the Group Loss model
 ├── evaluate.ipynb 
 │			Description:	
-│				[Add description here]
+│				Evaluation for the contrastive loss model
 ├── liveness.ipynb 
 │			Description:	
-│				[Add description here]
+│				Used to train the liveness detection model
 └── src/ 
 	 │		Description:	
 	 │			Folder containing all the python code 
@@ -66,7 +66,7 @@ A set of jupyter notebook and python modules that are the building block for the
 	 │			used for the evaluation of the models
 	 ├── hyper_tune/
 	 │		Description:	
-	 │			[Add description here]
+	 │			Contains the module used to do hyper-parameter tuning on the Group Loss model
 	 ├── model/
 	 │		Description:	
 	 │			To this folder belongs all the
@@ -127,7 +127,7 @@ The dataloaders for these datasets can be found inside `src/modules` as Pytorch 
 ## Image Transformation
 The images used for the training of the models are all quite uniform thanks to the amzing work made from the creators of these datasets. Anyway when dealing with images taken from the real world we should be very lucky to get images of the same size as the ones from the dataset and also with the same prospective of the subject. In particular, the model always expects an image with fixed width W and heigth H where W==H and, the face of the subject positioned exactly in the center, with such a rotation that positions the line that connect the eyes exatly parallel to the ground. 
 When feeding images from a real world scenario we need a transformation that normalize the size of the picture and positions the subject in a way similar to the one proposed for the used datasets. 
- 
+
 The **FaceAlignTransform** located inside `src/tools/image_preprocessing.py` proposes 2 possible kind of transformation:
 
 * Crop and Rotation
@@ -193,6 +193,10 @@ We use the accuracy metric to evaluate our models. The accuracy is calculated by
 For the Binary Cross Entropy model the accuracy is simpler to compute since the model outputs a probability of how similar the two images are.
 
 ![jnception_bce_test](./figures/InceptionResnetv1_BCE/jnception_bce_test.png)
+
+Some examples:
+
+![InceptionResnetV1 BCE results visualization](./figures/InceptionResnetv1_BCE/inc_bce_test_vis.png)
 
 ### Group Loss
 
