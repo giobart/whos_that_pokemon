@@ -88,7 +88,7 @@ load_checkpoint = True
 ```
 #### Evaluation
 
-We use the accuracy metric to evaluate our models. The accuracy is calculated by counting correctly classified images over the incorrect ones and in this case correctly classified means if they are similar or not. For the Contrastive Loss model, in order to know whether two images are similar or not, we compare the output embeddings to each other by computing the L2 norm and if the value is less than a specific threshold then we label them as equal. In order to find the best threshold we run the evaluation several times to get the threshold that achieves the best accuracy. The final accuracy value is achieved by averaging over batches and epochs.
+We use the accuracy metric to evaluate our models. The accuracy is calculated by counting correctly classified images over the incorrect ones and in this case correctly classified means if they are similar or not. For the Contrastive Loss model, in order to know whether two images are similar or not, we compare the output embeddings to each other by computing the L2 norm and if the value is less than a specific threshold then we label them as equal. In order to find the best threshold we run the evaluation several times and choose the one with the best accuracy. The final accuracy value is achieved by averaging over batches and epochs.
 
 ![mycnn_contra](./figures/MyCNN_Contrastive/mycnn_contra.png)
 
@@ -141,17 +141,17 @@ Below you can find some visualization of our result on the test dataset where a 
 
 ### Liveness Detection
 
-The liveness detection is used as an extra check to verify whether the person is real or not. It can detect whether a person's eyes are open or closed and with that we can detect if a person blinks which can be added as a requirement on top of the face recognition system. The liveness.ipynb notebook is used to train and evaluate the model. CFW Dataset was used to train the model but since this dataset doesn't contain a lot of images, a couple of tricks needed to be performed. Since we have already trained such a network with the Group Loss model, we were able to use that network with the same trained weights and apply transfer learning to retrain the last classification layer only which brings as to the first trick. For the second trick, we doubled the numbers of training samples by using image augmentation. The effect of image augmentation can be shown in the following graph comparing the three cases where we increased the size of the training set by 1.0, 1.5, and 2.0 for the orange, red and green curves respectively:
+The liveness detection is used as an extra check to verify whether the person is real or not. It can detect whether a person's eyes are open or closed and with that we can detect if a person blinks which can be added as a requirement on top of the face recognition system. The liveness.ipynb notebook is used to train and evaluate the model. The Closed Eyes in the WIld (CEW) Dataset was used to train the model but since this dataset doesn't contain a lot of images, a couple of tricks needed to be performed. Since we have already trained such a network with the Group Loss model, we were able to use that network with the same trained weights and apply transfer learning to retrain the last classification layer only which brings as to the first trick. For the second trick, we doubled the numbers of training samples by using image augmentation. The effect of image augmentation can be shown in the following graph comparing the three cases where we increased the size of the training set by 1.0, 1.5, and 2.0 for the orange, red and green curves respectively:
 
 
 
 ![liveness validation accuracy](./figures/liveness/liveness_val_acc_all.png)
 
-​																											*Orange: x1 augmentation*
+​																							*Orange: x1 augmentation*
 
-​																										    *Red: x1.5 augmentation*
+​																						    *Red: x1.5 augmentation*
 
-​																								 	   	*Green: x2.0 augmentation*
+​																				 	   	*Green: x2.0 augmentation*
 
 The liveness.ipynb notebook was used to train the model. Similar to the previous notebooks, it is parametrized by various flags that should be set according the required behavior. For example to run the evaluation, the following flags throughout the network set as following:
 
@@ -168,6 +168,44 @@ The following are the evaluation results:
 
 ![Result Visualization](./figures/liveness/liveness_aug_vis.png)
 
-### Checkpoints
+## Model Zoo
 
-### References
+The checkpoints can be found here: https://drive.google.com/drive/folders/1puXPrBrquphElXiCDuZSIbSYdRqprxG0?usp=sharing
+
+| BCE Model                                          | Description                         | Accuracy |
+| :------------------------------------------------- | :---------------------------------- | -------- |
+| resnet_BCE/Siamese-BCE-epoch=19-val_loss=0.35.ckpt | Train on LFW. No Image Augmentation | 90.16%   |
+
+| Group Loss Model                                             |                                                              | Recall@1 |
+| :----------------------------------------------------------- | :----------------------------------------------------------- | -------- |
+| group_loss_tuned_2of24_all_data_finetuned/Group-epoch=17-val_loss=1.44-val_R%_@1=81.12.ckpt | Model fine-tuned, hyper-parameter tunned, trained on all of CelebA, and tested on LFW | 94.61%   |
+| group_loss_tuned_2of24_all_data/Group-epoch=30-val_loss=1.56-val_R%_@1=79.84.ckpt | Hyper-parameter tunned, trained on CelebA, and tested on LFW | 92.24%   |
+| group_loss_tuned_2of24/Group-epoch=24-val_loss=1.53-val_R%_@1=78.84.ckpt | Hyper-parameter tunned, trained and tested on CelebA.        | 91.50%   |
+
+| Liveness Detection Model                                     | Description                            | Accuracy |
+| ------------------------------------------------------------ | -------------------------------------- | -------- |
+| liveness_all_finetuned/Group-epoch=33-val_acc=0.88.ckpt      | Trained on CEW                         | 88.33%   |
+| liveness_all_finetuned_augmented_100%/Group-epoch=25-val_acc=0.91.ckpt | Trained on CEW with Image Augmentation | 90.01%   |
+
+
+
+## Citation
+
+### Datasets
+
+<a name="[1]">[1]</a> F.Song, X.Tan, X.Liu and S.Chen, **Eyes Closeness Detection from Still Images with Multi-scale Histograms of Principal Oriented Gradients,** Pattern Recognition, 2014.
+
+<a name="[2]">[2]</a> [Gary B. Huang](http://vis-www.cs.umass.edu/~gbhuang), Manu Ramesh, [Tamara Berg](http://research.yahoo.com/bouncer_user/83), and [Erik Learned-Miller](http://www.cs.umass.edu/~elm). **Labeled Faces in the Wild: A Database for Studying Face Recognition in Unconstrained Environments.** *University of Massachusetts, Amherst, Technical Report 07-49*, October, 2007.
+
+<a name="[3]">[3]</a> [Gary B. Huang](http://vis-www.cs.umass.edu/~gbhuang) and [Erik Learned-Miller](http://www.cs.umass.edu/~elm). **Labeled Faces in the Wild: Updates and New Reporting Procedures.** *University of Massachusetts, Amherst, Technical Report UM-CS-2014-003*, May, 2014.
+
+<a name="[4]">[4]</a> Liu, Z., Luo, P., Wang, X., & Tang, X. (2015). **Deep Learning Face Attributes in the Wild.** In *Proceedings of International Conference on Computer Vision (ICCV)*.
+
+### Models
+
+<a name="[5]">[5]</a> Elezi, I., Vascon, S., Torcinovich, A., Pelillo, M., & Leal-Taixe, L. (2020). **The Group Loss for Deep Metric Learning.** In *European Conference on Computer Vision (ECCV)*.
+
+<a name="[6]">[6]</a> Taigman, Yaniv & Yang, Ming & Ranzato, Marc'Aurelio & Wolf, Lior. (2014). **DeepFace: Closing the Gap to Human-Level Performance in Face Verification.** Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition. 10.1109/CVPR.2014.220. 
+
+<a name="[7]">[7]</a> F. Schroff, D. Kalenichenko and J. Philbin, "**FaceNet: A unified embedding for face recognition and clustering,**" 2015 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Boston, MA, 2015, pp. 815-823, doi: 10.1109/CVPR.2015.7298682.
+
