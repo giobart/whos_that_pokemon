@@ -51,7 +51,8 @@ A set of jupyter notebook and python modules that are the building block for the
 │				LFW dataset and visualize some images
 ├── Train_BCE_Contrastive.ipynb 
 │			Description:	
-│				Used to train and evaluate both the BCE model and the Contrastive Loss model
+│				Used to train and evaluate both the BCE model 
+│				and the Contrastive Loss model
 ├── Train_Group_Loss.ipynb 
 │			Description:	
 │				Used to train and evaluate the Group Loss model
@@ -71,7 +72,8 @@ A set of jupyter notebook and python modules that are the building block for the
 	 │			used for the evaluation of the models
 	 ├── hyper_tune/
 	 │		Description:	
-	 │			Contains the module used to do hyper-parameter tuning on the Group Loss model
+	 │			Contains the module used to do hyper-parameter 
+	 │			tuning on the Group Loss model
 	 ├── model/
 	 │		Description:	
 	 │			To this folder belongs all the
