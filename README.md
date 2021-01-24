@@ -3,7 +3,7 @@
 This project wants to explore the power of Deep Learning in order to create models for face recognition and liveness detection that can be used for tasks like a website log in. 
 For this purpose, we propose a webapp that allows a system administrator to register new users using directly their face and gives the ability to log in using face recognition. Note that this application is not meant to be used for the public the login on the Internet. Rather is more suited for situations like a work environment where the employees have to register the working hours and demonstrate that they're working.
 
-![Project demo gif](static/liveness-correct.gif)
+![Project demo gif](figures/demo.gif)
 
 ## Environment
 
@@ -96,7 +96,7 @@ A set of jupyter notebook and python modules that are the building block for the
 
 ####  **Application block:**
 The application block consists of all the microservices that compose the final web application accordingly to the following scheme
-![cloud services scheme](static/cloud-services.png)
+![cloud services scheme](figures/Cloud-architecture/cloud-services.png)
 
 These services are part of the following submodules:
 
@@ -113,7 +113,7 @@ In order to use the web application is important to run them all and the access 
 * **Local Deploy:** is possible to run these services locally using the `entry.py` script inside them as described in the apposite README file inside the submodule repository. A dockerfile is also provided but further configuration for the networking are necessary. 
 * **Deploy with Openshift** Each submodule comes together with the documentation to configure a deployment on Openshift like the one in the following example
 
-![Openshift Deploy Scheme](static/openshift-deploy.png)
+![Openshift Deploy Scheme](figures/Cloud-architecture/openshift-deploy.png)
 
 Further informations about these services are provided inside the README in each submodule.
 
@@ -175,7 +175,7 @@ Very similar to the previous transformation except that:
 ### Example
 On the left side the original image captured from a webcam, on the right side the image after that the crop and rotation transform have been applied.
 
-![transform example](static/transform_comparison.jpg)
+![transform example](figures/Img-Transform/transform_comparison.jpg)
 
 ## Neural Network Models
 Three Models are supported for face recognition. The first model, uses a small custom Siamese model and trains it using the contrastive loss. This model is mostly used to test our setup. The second model is also a Siamese model but transfer learning is performed on InceptionResnetV1 CNN pre-trained on vggface2 and uses Binary Cross Entropy loss instead. The third model uses a Bn-Inception CNN pre-trained on ImageNet and trains the model using the Group Loss. We also use an extra model to perform liveness detection before the face recognition stage.
