@@ -220,6 +220,8 @@ Load_celeb = False # we don't want to evaluate on the CelebA dataset
 do_train = False # we don't want to train the group loss model
 load_checkpoint = True # we want to load the pretrained group model checkpoint
 do_download = True # to download the dataset
+calc_all_recall = True # to calculate recall globally
+calc_nmi = True # to calculate Normalized Mutual Infomration (NMI) globally
 ```
 
 In case an older version of Pytorch is available, load_ibm and save_ibm flags can be used to load or save checkpoints across different versions of Pytorch.
@@ -237,6 +239,10 @@ For the group loss to work, a costume sampler is needed for creating each batch.
 We use the recall@1 metric to evaluate the performance of our algorithm which is calculated by getting the most similar image to each of the images in the batch and checking if the labels are the same. Summing correctly identified samples and averaging the values over batches and epochs, in case of training, will give us the final result. Nevertheless, the value is strongly related to the number of classes per batch n and number of image per class per patch m. This gives us a clearer analysis of our results. Our final test results on LFW, using n = 8 and m = 3 Dataset are as follows:
 
 ![group loss LFW test result](./figures/Group_loss/group_test_lfw_finetuned_all.png)
+
+In addition, we also do a global evaluation of our model and calculate Recal@1, Recall@10, and Recall@20. This is different than the previous calculation of the recall because here we first stack all the output embeddings and labels from all batches together and then perform the computation of the recall. Whereas, in the previous approach we calculating the recall from every batch and then averaging them over all batches. We also calculate the Normalized Mutual Information (NMI) on as subset of the test dataset, 1680 classes. NMI metric measures how well the data is clustered and it has the following properties: its value is between 0 and 1, it is invariant to label permutation, and symmetric with respect to the true and the predicted labels. Our results are as follows:
+
+![lfw_nmi](./figures/Group_loss/lfw_nmi.png)
 
 We have also calculate the accuracy in the same way on the the same test dataset as in the previous BCE model to compare the performance of both models. Our results are as follows:
 
