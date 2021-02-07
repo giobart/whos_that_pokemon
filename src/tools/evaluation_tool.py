@@ -4,6 +4,7 @@ import torch
 import logging
 from pytorch_lightning.metrics import Metric
 
+
 def predict_batchwise(model, dataloader=None, fc7=None, batch=None, images=None, nb_batches=0):
     """
     :param model: Model used for the prediction
@@ -91,7 +92,9 @@ def evaluate(model, dataloader=None, fc7=None, batch=None, calc_nmi=False, nb_ba
 
     nmi = None
     if dataloader is not None and calc_nmi:
-        nmi = evaluation.calc_normalized_mutual_information(labels, evaluation.cluster_by_kmeans(emb, nb_classes))
+        num_included_classes = len(torch.unique(labels))
+        print("Calculating NMI for ", num_included_classes, "classes")
+        nmi = evaluation.calc_normalized_mutual_information(labels, evaluation.cluster_by_kmeans(emb, num_included_classes))
 
     recall = []
     # rank the nearest neighbors for each input

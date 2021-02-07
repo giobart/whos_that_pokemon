@@ -15,7 +15,7 @@ class Classification_Trainer(pl.LightningModule):
     """Used to train the liveness detection model using transfer learning, only that last linear layer of the
     BN_Inception network will be trained. The model detects open vs closed eyes and is used to check if a person
     is blinking."""
-    def __init__(self, hparams={}, scheduler_params={}, nb_classes=2, pretrained_classes=-1, checkpoint_path=''):
+    def __init__(self, hparams={}, scheduler_params={}, nb_classes=1, pretrained_classes=-1, checkpoint_path=''):
         """
 
         :param hparams: parameters for the optimizer

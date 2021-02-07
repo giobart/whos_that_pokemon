@@ -178,13 +178,13 @@ On the left side the original image captured from a webcam, on the right side th
 ![transform example](figures/Img-Transform/transform_comparison.jpg)
 
 ## Neural Network Models
-Three Models are supported for face recognition. The first model, uses a small custom Siamese model and trains it using the contrastive loss. This model is mostly used to test our setup. The second model is also a Siamese model but transfer learning is performed on InceptionResnetV1 CNN pre-trained on vggface2 and uses Binary Cross Entropy loss instead. The third model uses a Bn-Inception CNN pre-trained on ImageNet and trains the model using the Group Loss. We also use an extra model to perform liveness detection before the face recognition stage.
+Three Models are supported for face recognition. The first model uses a small custom Siamese model and trains it using the contrastive loss. This model is mostly used to test our setup. The second model is also a Siamese model, but transfer learning is performed on InceptionResnetV1 CNN pre-trained on vggface2 and uses Binary Cross-Entropy loss instead. The third model uses a Bn-Inception CNN pre-trained on ImageNet and trains the model using the Group Loss. We also use an extra model to perform liveness detection before the face recognition stage.
 
-### Siamese Network using Binary Cross Entropy and Contrastive Loss
+### Siamese Network using Binary Cross-Entropy and Contrastive Loss
 
 #### Running the notebook
 
-The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross Entropy and Contrastive Loss. Our work here is inspired by both papers `FaceNet: A unified embedding for face recognition and clustering`[[6]]([6]) and `DeepFace: Closing the Gap to Human-Level Performance in Face Verification`[[7]]([7]). Some flags and variables, in the notebook, can be used to choose which the behavior required. For example, to re-run the evaluation for the Contrastive Loss (current state), the following should be set throughout the network: 
+The train_BCE_Contrastive.ipynb notebook is used to train and evaluate both the Binary Cross-Entropy and Contrastive Loss. Our work here is inspired by both papers `FaceNet: A unified embedding for face recognition and clustering`[[6]]([6]) and `DeepFace: Closing the Gap to Human-Level Performance in Face Verification`[[7]]([7]). Some flags and variables in the notebook can be used to choose the behavior required. For example, to re-run the evaluation for the Contrastive Loss (current state), the following should be set throughout the network: 
 ```
 cnn_model = CNN_MODEL.InceptionResnetV1
 do_train = False
@@ -193,11 +193,11 @@ load_checkpoint = True
 ```
 #### Evaluation
 
-We use the accuracy metric to evaluate our models. The accuracy is calculated by counting correctly classified images over the incorrect ones and in this case correctly classified means if they are similar or not. For the Contrastive Loss model, in order to know whether two images are similar or not, we compare the output embeddings to each other by computing the L2 norm and if the value is less than a specific threshold then we label them as equal. In order to find the best threshold we run the evaluation several times and choose the one with the best accuracy. The final accuracy value is achieved by averaging over batches and epochs.
+We use the accuracy metric to evaluate our models. The accuracy is calculated by counting correctly classified images over the incorrect ones, and in this case, correctly classified means if they are similar or not. For the Contrastive Loss model, to know whether two images are identical, we compare the output embeddings to each other by computing the L2 norm, and if the value is less than a specific threshold, then we label them as equal. To find the best threshold, we run the evaluation several times and choose the one with the best accuracy. The final accuracy value is achieved by averaging over batches and epochs.
 
 ![mycnn_contra](./figures/MyCNN_Contrastive/mycnn_contra.png)
 
-For the Binary Cross Entropy model the accuracy is simpler to compute since the model outputs a probability of how similar the two images are.
+For the Binary Cross-Entropy model, the accuracy is simpler to compute since the model outputs a probability of how similar the two images are.
 
 ![jnception_bce_test](./figures/InceptionResnetv1_BCE/jnception_bce_test.png)
 
@@ -209,8 +209,8 @@ Some examples:
 
 #### Running the notebook
 
-The Train_Group_Loss.ipynb Notebook is used to train the Group Loss Model. To get the best results, the model was trained on the classification task for 10 epochs before training on the Group Loss which is also the same approach as in the original paper. In addition to that, we tuned the hyper-parameters and used the whole CelebA dataset for training and validation, and LFW for testing.
-Similar to the previous model, flags can be used to choose the behavior required. For example to evaluate the model on LFW, the following flags throughout the notebook should be set as following:
+The Train_Group_Loss.ipynb Notebook is used to train the Group Loss Model. To get the best results, the model was trained on the classification task for 10 epochs before training on the Group Loss, which is also the same approach as in the original paper. In addition to that, we tuned the hyper-parameters and used the whole CelebA dataset for training and validation and LFW for testing.
+Similar to the previous model, flags can be used to choose the behavior required. For example, to evaluate the model on LFW, the following flags throughout the notebook should be set as follows:
 
 ```python
 do_tune = False # we don't want to run hyper-parameter tuning
@@ -220,6 +220,8 @@ Load_celeb = False # we don't want to evaluate on the CelebA dataset
 do_train = False # we don't want to train the group loss model
 load_checkpoint = True # we want to load the pretrained group model checkpoint
 do_download = True # to download the dataset
+calc_all_recall = True # to calculate recall globally
+calc_nmi = True # to calculate Normalized Mutual Infomration (NMI) globally
 ```
 
 In case an older version of Pytorch is available, load_ibm and save_ibm flags can be used to load or save checkpoints across different versions of Pytorch.
@@ -228,21 +230,25 @@ Links in the notebook are provided to get all checkpoints used.
 
 #### Algorithm
 
-The Group Loss overcomes the problem of other loss functions such as the contrastive loss and the triplet loss which compare pairs or triplets of images together respectively. That means it is hard to consider all possible combinations. In addition, those loss functions require an extra hyper-parameter (margin) to furthermore separate the embeddings of images corresponding to different persons in the embedding space. On the other hand, the group loss compares all the samples in one batch to each other. It uses a similarity measure as prior information to decide whether to images correspond to the same person or not, and by doing that it learns a clear separation of the embeddings. In other words, the group loss answers the question "given that those two images are x similar to each other, what is the probability of them having the same label?" and it does that for all possible combinations of images in a batch by utilizing the gram matrix.
+The Group Loss overcomes the problem of other loss functions such as the contrastive loss and the triplet loss, which compare pairs or triplets of images together, respectively. That means it is hard to consider all possible combinations. Those loss functions require an extra hyper-parameter (margin) to separate the embeddings of images corresponding to different persons in the embedding space. On the other hand, the group loss compares all the samples in one batch to each other. It uses a similarity measure as prior information to decide whether images correspond to the same person. By doing that, it learns a clear separation of the embeddings. In other words, the group loss answers the question, "given that those two images are x similar to each other, what is the probability of them having the same label?" and it does that for all possible combinations of images in a batch by utilizing the gram matrix.
 
 For the group loss to work, a costume sampler is needed for creating each batch. The sampler chooses n classes with m number of images per class to include in every batch. Choosing n = 24 and m = 2 yields the best results.
 
 #### Evaluation
 
-We use the recall@1 metric to evaluate the performance of our algorithm which is calculated by getting the most similar image to each of the images in the batch and checking if the labels are the same. Summing correctly identified samples and averaging the values over batches and epochs, in case of training, will give us the final result. Nevertheless, the value is strongly related to the number of classes per batch n and number of image per class per patch m. This gives us a clearer analysis of our results. Our final test results on LFW, using n = 8 and m = 3 Dataset are as follows:
+We use the recall@1 metric to evaluate our algorithm's performance, which is calculated by getting the most similar image to each of the images in the batch and checking if the labels are the same. Summing correctly identified samples and averaging the values over batches and epochs will give us the final result in case of training. Nevertheless, the value is strongly related to the number of classes per batch n and the number of images per class per patch m, which gives us a more detailed analysis of the results. Our final test results on LFW Dataset, using n = 8 and m = 3, are as follows:
 
 ![group loss LFW test result](./figures/Group_loss/group_test_lfw_finetuned_all.png)
 
-We have also calculate the accuracy in the same way on the the same test dataset as in the previous BCE model to compare the performance of both models. Our results are as follows:
+In addition, we also do a global evaluation of our model and calculate Recal@1, Recall@10, and Recall@20. This approach is different from the previous calculation of the recall. Here we first stack all the output embeddings and labels from all batches and then calculate the recall. In the previous approach, we calculate the recall for every batch and then take the average over all batches. We also calculate the Normalized Mutual Information (NMI), which measures the clustering quality after applying a clustering algorithm, in our case, we use K-means. NMI has the following properties: its value is between 0 and 1, it is invariant to label permutation and symmetric with respect to the true and the predicted labels. Our results are as follows:
+
+![lfw_nmi](./figures/Group_loss/lfw_nmi.png)
+
+We have also calculate the accuracy in the same way and on the the same test dataset as in the previous BCE model to compare the performance of both models. Our results are as follows:
 
 ![Group loss visualization on LFW](./figures/Group_loss/group_lfw_test_acc.png)
 
-The result shows that at a threshold of 0.94 we get 94% accuracy which is around 4% more the the BCE model. Moreover, training this model was much more stable which means it has much less variance.
+The result shows that at a threshold of 0.94, we get 94% accuracy, which is around 4% more than the BCE model. Moreover, training this model was much more stable, meaning that it has much less variance.
 
 Below you can find some visualization of our result on the test dataset where a threshold of 0.8 can label all images correctly:
 
@@ -250,7 +256,7 @@ Below you can find some visualization of our result on the test dataset where a 
 
 ### Liveness Detection
 
-The liveness detection is used as an extra check to verify whether the person is real or not. It can detect whether a person's eyes are open or closed and with that we can detect if a person blinks which can be added as a requirement on top of the face recognition system. The liveness.ipynb notebook is used to train and evaluate the model. The Closed Eyes in the WIld [[1]](#[1]) (CEW) Dataset was used to train the model but since this dataset doesn't contain a lot of images, a couple of tricks needed to be performed. Since we have already trained such a network with the Group Loss model, we were able to use that network with the same trained weights and apply transfer learning to retrain the last classification layer only which brings as to the first trick. For the second trick, we doubled the numbers of training samples by using image augmentation. The effect of image augmentation can be shown in the following graph comparing the three cases where we increased the size of the training set by 1.0, 1.5, and 2.0 for the orange, red and green curves respectively:
+The liveness detection is used as an extra check to verify whether the person is real or not. It can detect whether a person's eyes are open or closed, and with that, we can detect if a person blinks, which can be added as a requirement on top of the face recognition system. The liveness.ipynb notebook is used to train and evaluate the model. The Closed Eyes in the Wild [[1]](#[1]) (CEW) Dataset was used to train the model, but since this dataset doesn't contain a lot of images, a couple of tricks are needed to be performed. Since we have already trained such a network with the Group Loss model, we used that network with the same trained weights and applied transfer learning to only retrain the last classification layer, bringing us to the first trick. For the second trick, we doubled the numbers of training samples by using image augmentation. We visualize the effect of image augmentation in the following graph comparing the three cases where we increased the size of the training set by 1.0, 1.5, and 2.0 for the orange, red and green curves, respectively:
 
 
 
@@ -262,7 +268,7 @@ The liveness detection is used as an extra check to verify whether the person is
 
 ​																				 	   	*Green: x2.0 augmentation*
 
-The liveness.ipynb notebook was used to train the model. Similar to the previous notebooks, it is parametrized by various flags that should be set according the required behavior. For example to run the evaluation, the following flags throughout the network set as following:
+The liveness.ipynb notebook was used to train the model. Similar to the previous notebooks, it is parametrized by various flags that should be set according to the required behavior. For example, to run the evaluation, the following flags throughout the network set as following:
 
 ```
 dataset_gdrive_download(config = config_cfw) # uncomment to download CFW Dataset
