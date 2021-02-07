@@ -1,27 +1,27 @@
 # Who's that Pokemon
 
-This project wants to explore the power of Deep Learning in order to create models for face recognition and liveness detection that can be used for tasks like a website log in. 
-For this purpose, we propose a webapp that allows a system administrator to register new users using directly their face and gives the ability to log in using face recognition. Note that this application is not meant to be used for the public the login on the Internet. Rather is more suited for situations like a work environment where the employees have to register the working hours and demonstrate that they're working.
+This project aims to explore the power of Deep Learning in creating models for facial recognition and liveness detection that can be used for tasks such as website log in. 
+For this purpose, we propose a webapp that allows a system administrator to register new users using their face and gives users the ability to log in using facial recognition. Note that this application is not meant to be used for public login on the Internet. Rather, it is more suited for situations such as a work environment where the employees have to register the working hours and demonstrate that they are working.
 
 ![Project demo gif](figures/demo.gif)
 
 ## Environment
 
-This project provides a script that setup the environment of the main repository automatically. <br><br>
-To create the virtual environment simply run:
+This project provides a script that sets up the environment of the main repository automatically. <br><br>
+To create the virtual environment, simply run:
 
 ```
 python env_builder.py
 ```
 
-this script will create a virtualenv inside `virt/` folder. (This operation may take few minutes) <br><br>
-To activate the virtual environment use:
+this script will create a virtualenv inside `virt/` folder. This operation may take few minutes. <br><br>
+To activate the virtual environment, use:
 
 ```
 . virt/bin/activate
 ```
 
-To deactivate the virtual environment use:<br>
+To deactivate the virtual environment, use:<br>
 
 ```
 deactivate
@@ -29,8 +29,8 @@ deactivate
 
 ## Requirements
 
-If you don't use the automatic generated virtual environment or if you're running the code inside the submodules 
-you need to install the requirements manually running:
+If you do not wish to use the automatic generated virtual environment or if you are running the code inside the submodules, 
+you need to install the requirements manually, running:
 
 ```
 pip install -r requirements.txt
@@ -38,10 +38,10 @@ pip install -r requirements.txt
 
 ## Project Structure
 
- This project is divided into 2 main blocks
+ This project is divided into 2 main blocks:
 
 ####  **Research block:** <br>
-A set of jupyter notebook and python modules that are the building block for the research made in this project. All of this belongs to this main repository. Here you'll find:
+A set of Jupyter notebooks and python modules that form the building blocks for the research progress made in this project. All of this belongs to this main repository. Here, you will find:
 
 ```
 .
